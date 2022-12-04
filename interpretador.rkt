@@ -16,11 +16,16 @@
 ;;                      <numero-lit (datum)>
 ;;                  ::= <identifier>
 ;;                      <var-exp (id)>
+;;                  ::= var {<identifier> = <expression>}*(,) in <expression> Inspirado por Javascript
+;;                      <decVar-exp (ids rands body)>  
+;;                  ::= const {<identifier> = <expression>}*(,) in <expression> Inspirado por Javascript
+;;                      <const-exp>
+;;                  ::=
+;; ENTREGA ANTERIOR:
 ;;                  ::= (<expression> <primitiva-binaria> <expression>)
-;;                  ::= <expression>
 ;;                      <primapp-bin-exp (exp1 prim-binaria exp2)>
 ;;                  ::= <expression>
-;;                      < primapp-un-exp (prim-unaria exp) >
+;;                      <primapp-un-exp (prim-unaria exp) >
 ;;                  ::= Si <expression> entonces <expression> sino <expression> finSI
 ;;                      <condicional-exp (test-exp true-exp false-exp)>
 ;;                  ::= declarar ( {<identifier> = <expression>}*(;) ) { <expression> }
@@ -43,7 +48,7 @@
   (comment
    ("%" (arbno (not #\newline))) skip)
   (identifier
-   ("@" letter (arbno (or letter digit "?"))) symbol)
+   (letter (arbno (or letter digit))) symbol)
   (text
    ("\"" (or letter whitespace "_")
               (arbno (or letter digit whitespace ":" "?" "=" "'" "_")) "\"") string)
@@ -63,6 +68,10 @@
     (expression (number) numero-lit)
     (expression (text) text-lit)
     (expression (identifier) var-exp)
+    (expression ("var" (separated-list identifier "=" expression ",") "in" expression) decVar-exp)
+    (expression ("const" (separated-list identifier "=" expression ",") "in" expression) const-exp)
+    (expression ("rec" "(" (separated-list identifier ",") ")" "=" expression) rec-exp)
+    ;;GRAMATICAS TALLER PASADO:
     (expression
      ("("  expression primitiva-binaria expression ")") primapp-bin-exp)
     (expression
@@ -76,7 +85,6 @@
     (expression ( "evaluar" expression "("(separated-list expression ",") ")"  "finEval" ) app-exp)
     (expression ("declaraRec" "(" (arbno identifier "(" (separated-list identifier ",") ")" "=" expression) ")" "{" expression "}") 
                 declaraRec-exp)
-    ;;;
     (primitiva-binaria ("+") primitiva-suma)
     (primitiva-binaria ("~") primitiva-resta)
     (primitiva-binaria ("*") primitiva-multi)
@@ -84,7 +92,8 @@
     (primitiva-binaria ("concat") primitiva-concat)
     (primitiva-unaria ("add1") primitiva-add1)
     (primitiva-unaria ("sub1") primitiva-sub1)
-    (primitiva-unaria ("longitud") primitiva-longitud)))
+    (primitiva-unaria ("longitud") primitiva-longitud)
+    ))
 
 
 ;Tipos de datos para la sintaxis abstracta de la gramática
@@ -196,6 +205,10 @@
       (numero-lit (datum) datum)
       (text-lit (txt) (normalizar txt))
       (var-exp (id) (buscar-variable env id))
+      (decVar-exp (ids rands body) ids)
+      (const-exp (ids rands body) ids)
+      (rec-exp (proc-names idss bodies rec-body) proc-names)
+      ;;ENTREGA ANTERIOR:
       (primapp-bin-exp (rand1 prim-bin rand2)
                    (let ((args  (eval-expression rand1 env))
                          (args2 (eval-expression rand2 env)))
