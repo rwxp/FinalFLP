@@ -85,28 +85,28 @@
     (expression (number) numero)
     (expression (text) cadena)
     ;;booleanos
-    (expr-bool ("true") bool)
-    (expr-bool ("false") bool)
+    (expr-bool ("true") true-val)
+    (expr-bool ("false") false-val)
     ;;Constructores de Datos Predefinidos
     (expression ("["(separated-list expression ",")"]") lista)
     (expression ("tupla""["(separated-list expression ",")"]") tupla)
-    (expression ("{"identifier "=" expression (separated-list identifier "=" expression ",")"}") registro)
+    (expression ("{"(separated-list identifier "=" expression ",")"}") registro)
     
     ;;predicados -> bool
     (expr-bool (pred-prim "(" expression "," expression ")") pred-bool)
     ;;operaciones sobre booleanos
-    (expr-bool (oper-bin-bool "(" expr-bool "," expr-bool ")") oper-binaria-bool)
-    (expr-bool (oper-un-bool "("expr-bool")") oper-unaria-bool)
+;    (expr-bool (oper-bin-bool "(" expr-bool "," expr-bool ")") oper-binaria-bool)
+;    (expr-bool (oper-un-bool "("expr-bool")") oper-unaria-bool)
 
     ;;Estructuras de control
-    ;;(expression
-    ;; ("begin" expression) begin-exp)??
+    (expression
+     ("begin" (separated-list expression ";") "end") begin-exp)
     (expression
      ("if" expr-bool "then" expression "[" "else" expression "]" "end") condicional-exp)
+;    (expression
+;     ("while" expr-bool  "do" expression "done") while-exp)
     (expression
-     ("while" expr-bool  "do" expression "done") while-exp)
-    (expression
-     ("for" identifier "=" expression  expression "do" expression "done") for-exp)
+     ("for" identifier "=" expression "to" expression "do" expression "done") for-exp)
     
     (pred-prim (">") great)
     (pred-prim (">=") great-eq)
@@ -115,10 +115,10 @@
     (pred-prim ("==") equal)
     (pred-prim ("<>") not-equal)
 
-    (oper-bin-bool ("and") and-op)
-    (oper-bin-bool ("or") or-op)
-
-    (oper-un-bool ("not") not-op)
+;    (oper-bin-bool ("and") and-op)
+;    (oper-bin-bool ("or") or-op)
+;
+;    (oper-un-bool ("not") not-op)
 
     
     ;;GRAMATICAS TALLER PASADO:
@@ -147,59 +147,6 @@
     (primitiva-unaria ("longitud") primitiva-longitud)
     (primitiva-binaria ("concat") primitiva-concat)
     ))
-
-
-;Tipos de datos para la sintaxis abstracta de la gramática
-
-;Construidos manualmente:
-
-;(define-datatype program program?
-;  (un-program
-;   (exp expression?)))
-;
-;(define-datatype expression expression?
-;  (numero-lit
-;   (datum number?))
-;  (text-lit
-;   (txt string?))
-;  (var-exp
-;   (id symbol?))
-;  ( primapp-bin-exp
-;   (rand (expression?))
-;   (prim primitiva-binaria?)
-;   (rand (expression?)))
-;  ( primapp-un-exp
-;   (prim primitiva-unaria?)
-;   (rand ( expression?)))
-;  (declaraRec-exp
-;   (proc-names (list-of symbol?))
-;   (ids (list-of symbol?))
-;   (bodies (list-of expression?))
-;   (letrec-body expression?))
-;  (condicional-exp
-;   (test-exp expression?)
-;   (true-exp expression?)
-;   (false-exp expression?))
-;  (variableLocal-exp
-;   (ids (list-of symbol?))
-;   (rans (list-of expression?))
-;   (body expression?))
-;  (procedimiento-ex
-;   (ids (list-of symbol?))
-;   (body expression?))
-;  (app-exp
-;   (ids expression?)
-;   (body  (list-of expression?)))
-;
-;(define-datatype primitive primitive?
-;  (primitiva-suma)
-;  (primitiva-resta)
-;  (primitiva-multi)
-;  (primitiva-div)
-;  (primitiva-concat)
-;  (primitiva-add1)
-;  (primitiva-sub1)
-;  (primitiva-longitud))
 
 ;Construidos automáticamente:
 
@@ -255,12 +202,27 @@
 (define eval-expression
   (lambda (exp env)
     (cases expression exp
+      (base8-num-exp (nums) nums)
+      (base16-num-exp (nums) nums)
+      (base32-num-exp (nums) nums)
       (numero (datum) datum)
       (cadena (txt) (normalizar txt))
       (var-exp (id) (buscar-variable env id))
       (decVar-exp (ids rands body) ids)
       (const-exp (ids rands body) ids)
       (rec-exp (proc-names idss bodies rec-body) proc-names)
+      (lista (values) values)
+      (tupla(values) values)
+      (registro(ids exps)ids)
+      (begin-exp (exps) exps)
+      (condicional-exp (test-exp true-exp false-exp) (if (eval-bool test-exp env) (eval-expression true-exp env)
+                                                         (eval-expression false-exp env)))
+;      (while-exp(test-exp true-exp) test-exp)
+      (for-exp (id init-value final-value body) id)
+;      (pred-bool (pred exp1 exp2) pred)
+;      (oper-binaria-bool (op exp1 exp2) op)
+;      (oper-unaria-bool (op exp1) exp1)
+      
       ;;ENTREGA ANTERIOR:
       (primapp-bin-exp (rand1 prim-bin rand2)
                    (let ((args  (eval-expression rand1 env))
@@ -269,10 +231,6 @@
       (primapp-un-exp (prim-un rand)
                    (let ((args (eval-expression rand env)))
                      (apply-primitiva-unaria prim-un args)))
-      (condicional-exp (test-exp true-exp false-exp)
-              (if (valor-verdad? (eval-expression test-exp env))
-                  (eval-expression true-exp env)
-                  (eval-expression false-exp env)))
       (variableLocal-exp (ids rands body)
               (let ((args (eval-rands rands env)))
                 (eval-expression body
@@ -289,6 +247,25 @@
       (declaraRec-exp (proc-names idss bodies letrec-body)
                   (eval-expression letrec-body
                                    (extend-env-recursively proc-names idss bodies env))))))
+
+(define eval-bool
+  (lambda(bool-exp env)
+    (cases expr-bool bool-exp
+      (true-val () "true")
+      (false-val () "false")
+      (pred-bool (pred exp1 exp2) ((eval-pred pred) (eval-expression exp1 env) (eval-expression exp2 env)))
+    )))
+
+(define eval-pred
+  (lambda(pred)
+    (cases pred-prim pred
+      (great () >)
+      (great-eq () >=)
+      (less () <)
+      (less-eq () <=)
+      (equal () =)
+      (not-equal () (lambda(exp1 exp2)(not (= exp1 exp2)))))
+    ))
 
 ; eval-rands: funciones auxiliares para aplicar eval-rand a cada elemento de una 
 ; lista de operandos (expresiones)
@@ -353,13 +330,6 @@
     (cases procVal proc
       (cerradura (ids body env)
                (eval-expression body (extend-env ids args env))))))
-
-
-;valor-verdad?: determina si un valor dado corresponde a 0 retorna falso, de lo contrario retorna verdadero
-; <numero> -> <boolean>
-(define valor-verdad?
-  (lambda (x)
-    (not (zero? x))))
 
 ;*******************************************************************************************
 ;Ambientes
