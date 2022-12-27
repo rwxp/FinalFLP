@@ -105,8 +105,8 @@
 
 
     ;;expr-bool
-    (bool ("true") true-val)
-    (bool ("false") false-val)    
+    (expr-bool ("true") true-val)
+    (expr-bool ("false") false-val)    
     (expr-bool (pred-prim "(" expression "," expression ")") pred-bool)
     (expr-bool (oper-bin-bool "(" expr-bool "," expr-bool ")") oper-binaria-bool)
     (expr-bool (oper-un-bool "("expr-bool")") oper-unaria-bool)
@@ -255,7 +255,7 @@
 
       ;;estructura de control
       (begin-exp (exps) exps)
-      (condicional-exp (test-exp true-exp false-exp) (if (eval-bool test-exp env) (eval-expression true-exp env)
+      (condicional-exp (test-exp true-exp false-exp) (if (eval-bool-exp test-exp env) (eval-expression true-exp env)
                                                          (eval-expression false-exp env)))
       (while-exp(test-exp true-exp) test-exp)
       (for-exp (id init-value final-value body) id)
@@ -283,19 +283,14 @@
                                  "Attempt to apply non-procedure ~s" proc))))
      )))
 
-
-(define (eval-bool bool-val env)
-  (cases bool bool-val
-    (true-val  () "true")
-    (false-val () "false")
-    
- ))
 (define eval-bool-exp
   (lambda(bool-exp env)
-    (cases expr-bool bool-exp    
+    (cases expr-bool bool-exp
+      (true-val  () #t)
+      (false-val () #f)
       (pred-bool (pred exp1 exp2) ((eval-pred pred) (eval-expression exp1 env) (eval-expression exp2 env)))
-      (oper-binaria-bool (op exp1 exp2) op)
-      (oper-unaria-bool (op exp1) exp1)
+      (oper-binaria-bool (op exp1 exp2) (apply-bool-binaria op (eval-bool-exp exp1 env) (eval-bool-exp exp2 env)))
+      (oper-unaria-bool (op exp1) (apply-bool-unaria op (eval-bool-exp exp1 env)))
     )))
 
 (define eval-pred
@@ -308,6 +303,23 @@
       (equal () =)
       (not-equal () (lambda(exp1 exp2)(not (= exp1 exp2)))))
     ))
+(define apply-bool-binaria
+  (lambda(op arg1 arg2)
+    (cases oper-bin-bool op
+      (and-op () (and arg1 arg2))
+      (or-op () (or arg1 arg2))
+     )
+    )
+  )
+
+(define apply-bool-unaria
+  (lambda(op arg)
+    (cases oper-un-bool op
+      (not-op () (not arg))
+     )
+    )
+  )
+
 
 ; eval-rands: funciones auxiliares para aplicar eval-rand a cada elemento de una 
 ; lista de operandos (expresiones)
