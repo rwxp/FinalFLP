@@ -19,8 +19,9 @@
 ;;                  ::= var {<identifier> = <expression>}*(,) in <expression> Inspirado por Javascript
 ;;                      <decVar-exp (ids rands body)>  
 ;;                  ::= const {<identifier> = <expression>}*(,) in <expression> Inspirado por Javascript
-;;                      <const-exp>
-;;                  ::=
+;;                      <const-exp (ids exps body)>
+;;                  ::= rec {<identifier> = ({<identifier>}*(,)) = <expression>}* in <expression>
+;;                      <rec-exp (rators idss exps body)>
 ;; ENTREGA ANTERIOR:
 ;;                  ::= (<expression> <primitiva-binaria> <expression>)
 ;;                      <primapp-bin-exp (exp1 prim-binaria exp2)>
