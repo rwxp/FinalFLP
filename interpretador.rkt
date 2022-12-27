@@ -72,42 +72,44 @@
 (define grammar-simple-interpreter
   '((program (expression) un-programa)
     
+    ;;números hexadecimales
     (expression ("x8" "("(separated-list number ",")")") base8-num-exp)
     (expression ("x16" "("(separated-list number ",")")") base16-num-exp)
     (expression ("x32" "("(separated-list number ",")")") base32-num-exp)
 
     ;;identificador
-    (expression (identifier) var-exp)
+    (expression (identifier) identificador)
     ;;definiciones
     (expression ("var" (separated-list identifier "=" expression ",") "in" expression) decVar-exp)
     (expression ("const" (separated-list identifier "=" expression ",") "in" expression) const-exp)
-    (expression ("rec" (arbno identifier "(" (separated-list identifier ",") ")" "=" expression)  "in" expression) rec-exp)
+    (expression ("rec" (arbno identifier "(" (separated-list identifier ",") ")" "=" expression)
+                       "in" expression) rec-exp)
     ;;datos
     (expression (number) numero)
     (expression (text) cadena)
-    ;;booleanos
-    (expr-bool ("true") true-val)
-    (expr-bool ("false") false-val)
+    
     ;;Constructores de Datos Predefinidos
     (expression ("["(separated-list expression ",")"]") lista)
     (expression ("tupla""["(separated-list expression ",")"]") tupla)
     (expression ("{"(separated-list identifier "=" expression ",")"}") registro)
-    
-    ;;predicados -> bool
-    (expr-bool (pred-prim "(" expression "," expression ")") pred-bool)
-    ;;operaciones sobre booleanos
-;    (expr-bool (oper-bin-bool "(" expr-bool "," expr-bool ")") oper-binaria-bool)
-;    (expr-bool (oper-un-bool "("expr-bool")") oper-unaria-bool)
 
     ;;Estructuras de control
     (expression
      ("begin" (separated-list expression ";") "end") begin-exp)
     (expression
      ("if" expr-bool "then" expression "[" "else" expression "]" "end") condicional-exp)
-;    (expression
-;     ("while" expr-bool  "do" expression "done") while-exp)
+    (expression
+     ("while" expr-bool  "do" expression "done") while-exp)
     (expression
      ("for" identifier "=" expression "to" expression "do" expression "done") for-exp)
+
+
+    ;;expr-bool
+    (bool ("true") true-val)
+    (bool ("false") false-val)    
+    (expr-bool (pred-prim "(" expression "," expression ")") pred-bool)
+    (expr-bool (oper-bin-bool "(" expr-bool "," expr-bool ")") oper-binaria-bool)
+    (expr-bool (oper-un-bool "("expr-bool")") oper-unaria-bool)
     
     (pred-prim (">") great)
     (pred-prim (">=") great-eq)
@@ -116,38 +118,59 @@
     (pred-prim ("==") equal)
     (pred-prim ("<>") not-equal)
 
-;    (oper-bin-bool ("and") and-op)
-;    (oper-bin-bool ("or") or-op)
-;
-;    (oper-un-bool ("not") not-op)
+    (oper-bin-bool ("and") and-op)
+    (oper-bin-bool ("or") or-op)
+    (oper-un-bool ("not") not-op)
 
     
-    ;;GRAMATICAS TALLER PASADO:
+    ;;operaciones binarias y unarias 
     (expression
      ("("  expression primitiva-binaria expression ")") primapp-bin-exp)
     (expression
      ( primitiva-unaria "(" expression ")") primapp-un-exp)
-    (expression
-     ("declarar" "("(separated-list identifier "=" expression ";")")" "{" expression "}") variableLocal-exp)
+
+    ;;procedimiento
     (expression
      ("procedimiento" "(" (separated-list identifier ",") ")" "haga" expression "finProc") procedimiento-ex)
+    ;;recursiva
     (expression ( "evaluar" expression "("(separated-list expression ",") ")"  "finEval" ) app-exp)
-    (expression ("declaraRec" "(" (arbno identifier "(" (separated-list identifier ",") ")" "=" expression) ")" "{" expression "}") 
-                declaraRec-exp)
+    
 
     ;;sobre enteros
     (primitiva-binaria ("+") primitiva-suma)
     (primitiva-binaria ("~") primitiva-resta)
     (primitiva-binaria ("*") primitiva-multi)
     (primitiva-binaria ("/") primitiva-div)
-    (primitiva-binaria ("%") primitiva-div)
+    (primitiva-binaria ("%") primitiva-mod)
     (primitiva-unaria ("add1") primitiva-add1)
     (primitiva-unaria ("sub1") primitiva-sub1)
+
+    ;;Sobre base 8, 16 y 32
+    ;;aritmeticas base 8
+    (primitiva-binaria ("octal+") primitiva-suma-octal)
+    (primitiva-binaria ("octal~") primitiva-resta-octal)
+    (primitiva-binaria ("octal*") primitiva-multiplicacion-octal)
+    (primitiva-unaria ("octal-add1") primitiva-add1-octal)
+    (primitiva-unaria ("octal-sub1") primitiva-sub1-octal)
+    ;;aritméticas base 16
+    (primitiva-binaria ("hexa+") primitiva-suma-hexa)
+    (primitiva-binaria ("hexa~") primitiva-resta-hexa)
+    (primitiva-binaria ("hexa*") primitiva-multiplicacion-hexa)
+    (primitiva-unaria ("hexa-add1") primitiva-add1-hexa)
+    (primitiva-unaria ("hexa-sub1") primitiva-sub1-hexa)
+    ;;aritméticas base 32
+    (primitiva-binaria ("32+") primitiva-suma-32)
+    (primitiva-binaria ("32~") primitiva-resta-32)
+    (primitiva-binaria ("32*") primitiva-multiplicacion-32)
+    (primitiva-unaria ("32-add1") primitiva-add1-32)
+    (primitiva-unaria ("32-sub1") primitiva-sub1-32)
 
     ;;sobre cadenas
     (primitiva-unaria ("longitud") primitiva-longitud)
     (primitiva-binaria ("concat") primitiva-concat)
     ))
+
+
 
 ;Construidos automáticamente:
 
@@ -203,28 +226,42 @@
 (define eval-expression
   (lambda (exp env)
     (cases expression exp
+      
+      ;base 8, 16 y 32
       (base8-num-exp (nums) nums)
       (base16-num-exp (nums) nums)
       (base32-num-exp (nums) nums)
+
+      ;;datos
       (numero (datum) datum)
       (cadena (txt) (normalizar txt))
-      (var-exp (id) (buscar-variable env id))
-      (decVar-exp (ids rands body) ids)
+      (identificador (id) (buscar-variable env id))
+
+      ;;definiciones
+      (decVar-exp (ids rands body)
+              (let ((args (eval-rands rands env)))
+                (eval-expression body
+                                 (extend-env ids args env))))
       (const-exp (ids rands body) ids)
-      (rec-exp (proc-names idss bodies rec-body) proc-names)
+      
+      (rec-exp (proc-names idss bodies letrec-body)
+                  (eval-expression letrec-body
+                                   (extend-env-recursively proc-names idss bodies env)))
+
+      ;;datos predefinidos
       (lista (values) values)
       (tupla(values) values)
       (registro(ids exps)ids)
+
+      ;;estructura de control
       (begin-exp (exps) exps)
       (condicional-exp (test-exp true-exp false-exp) (if (eval-bool test-exp env) (eval-expression true-exp env)
                                                          (eval-expression false-exp env)))
-;      (while-exp(test-exp true-exp) test-exp)
+      (while-exp(test-exp true-exp) test-exp)
       (for-exp (id init-value final-value body) id)
-;      (pred-bool (pred exp1 exp2) pred)
-;      (oper-binaria-bool (op exp1 exp2) op)
-;      (oper-unaria-bool (op exp1) exp1)
+     
       
-      ;;ENTREGA ANTERIOR:
+      ;;aplicar primitivas unaria y binaria
       (primapp-bin-exp (rand1 prim-bin rand2)
                    (let ((args  (eval-expression rand1 env))
                          (args2 (eval-expression rand2 env)))
@@ -232,12 +269,11 @@
       (primapp-un-exp (prim-un rand)
                    (let ((args (eval-expression rand env)))
                      (apply-primitiva-unaria prim-un args)))
-      (variableLocal-exp (ids rands body)
-              (let ((args (eval-rands rands env)))
-                (eval-expression body
-                                 (extend-env ids args env))))
+
+      ;;procedimiento
       (procedimiento-ex (ids cuerpo)
                 (cerradura ids cuerpo env))
+      
       (app-exp (rator rands)
                (let ((proc (eval-expression rator env))
                      (args (eval-rands rands env)))
@@ -245,16 +281,21 @@
                      (apply-procedure proc args)
                      (eopl:error 'eval-expression
                                  "Attempt to apply non-procedure ~s" proc))))
-      (declaraRec-exp (proc-names idss bodies letrec-body)
-                  (eval-expression letrec-body
-                                   (extend-env-recursively proc-names idss bodies env))))))
+     )))
 
-(define eval-bool
+
+(define (eval-bool bool-val env)
+  (cases bool bool-val
+    (true-val  () "true")
+    (false-val () "false")
+    
+ ))
+(define eval-bool-exp
   (lambda(bool-exp env)
-    (cases expr-bool bool-exp
-      (true-val () "true")
-      (false-val () "false")
+    (cases expr-bool bool-exp    
       (pred-bool (pred exp1 exp2) ((eval-pred pred) (eval-expression exp1 env) (eval-expression exp2 env)))
+      (oper-binaria-bool (op exp1 exp2) op)
+      (oper-unaria-bool (op exp1) exp1)
     )))
 
 (define eval-pred
@@ -287,12 +328,210 @@
 (define apply-primitiva-binaria
   (lambda (prim arg1 arg2 )
     (cases primitiva-binaria prim
+      ;;aritmeticas base 8
+      (primitiva-suma-octal() (sumaOctal arg1 arg2 ))
+      (primitiva-resta-octal () (restaOctal arg1 arg2))
+      (primitiva-multiplicacion-octal () (multiOctal arg1 arg2))
+      ;;aritmeticas base 16
+      (primitiva-suma-hexa() (sumaHexa arg1 arg2))
+      (primitiva-resta-hexa () (restaHexa arg1 arg2))
+      (primitiva-multiplicacion-hexa () (multiHexa arg1 arg2))
+      ;;aritmeticas base 32
+      (primitiva-suma-32() (suma32 arg1 arg2))
+      (primitiva-resta-32 () (resta32 arg1 arg2))
+      (primitiva-multiplicacion-32 () (multi32 arg1 arg2))
+      ;;aritmeticas enteros
       (primitiva-suma () (+ arg1 arg2))
       (primitiva-resta () (- arg1 arg2))
       (primitiva-multi () (* arg1 arg2))
       (primitiva-div () (/ arg1 arg2))
+      (primitiva-mod () (modulo arg1 arg2))
+      ;;aritmetica cadena
       (primitiva-concat() (string-append arg1 arg2)) 
       )))
+
+;---------Funciones que operan con los numeros en las bases 8, 16, 32 -----------
+(define is-zero?
+  (lambda (n)
+    (or (null? n) (equal?  n '(0)))
+    )
+  )
+;;Funcion que retorna el siguiente valor de un octal
+;;octal -> octal
+(define successorOctal
+  (lambda (l)
+    (cond
+      [(is-zero? l)'(1)]
+      [(< (car l) 7) (cons (+ 1 (car l)) (cdr l))]
+      [(eqv? 7 (car l)) (cons 0 (successorOctal (cdr l)))]
+      )
+    )
+  )
+;;Funcion que retorna el valor previo de un octal
+;;octal -> octal
+(define predecessorOctal
+  (lambda (l)
+    (cond
+      [(and (is-zero? (list (car l)))(not (null?(cdr l)))) (cons 7 (predecessorOctal (cdr l)))]
+      [(is-zero? l) (0)]
+      [(and (eqv? (car l) 1) (null? (cdr l))) empty]
+      [(> 8 (car l)) (cons (- (car l) 1) (cdr l))]
+      )
+    )
+  )
+;;Funcion que suma dos Octales y retorna el resultado en Octales
+;;l1,l2 : Octal -> Octal
+(define sumaOctal
+  (lambda (l1 l2)
+    (cond
+      [(is-zero? l2)l1]
+      [(is-zero? l1)l2]
+      [else (sumaOctal (successorOctal l1)(predecessorOctal l2))]
+      )
+    )
+  )
+;;Funcion que resta dos Octales y retorna el resultado en Octal
+;;l1,l2 : Octal -> Octal
+(define restaOctal
+  (lambda (l1 l2)
+    (cond
+      [(and (is-zero? l1)(not(is-zero? l2)))(eopl:error "No se cubren los resultados negativos")]
+      [(is-zero? l2)l1]
+      [(is-zero? l1)(0)]
+      [else (restaOctal (predecessorOctal l1)(predecessorOctal l2))]
+      )
+    )
+  )
+;;Funcion que multiplica dos Octales y retorna el resultado en Octal
+;;op1,op2 : Octal -> Octal
+(define multiOctal
+  (lambda (op1 op2)
+    (cond
+      [(or(is-zero? op1)(is-zero? op2))(0)]
+      [(is-zero? (predecessorOctal op2))op1]
+      [else (sumaOctal op1 (multiOctal op1 (predecessorOctal op2)))]
+      )
+    )
+  )
+
+;;Funcion que retorna el siguiente valor de un Hexadecimal
+;;bigNum16 -> bigNum16
+(define successorHexa
+  (lambda (l)
+    (cond
+      [(is-zero? l)'(1)]
+      [(< (car l) 15) (cons (+ 1 (car l)) (cdr l))]
+      [(eqv? 15 (car l)) (cons 0 (successorHexa (cdr l)))]
+      )
+    )
+  )
+;;Funcion que retorna el valor previo de un Hexadecimal
+;;bigNum16 -> bigNum16
+(define predecessorHexa
+  (lambda (l)
+    (cond
+      [(and (is-zero? (list (car l)))(not (null?(cdr l)))) (cons 15 (predecessorHexa (cdr l)))]
+      [(is-zero? l) (0)]
+      [(and (eqv? (car l) 1) (null? (cdr l))) empty]
+      [(> 16 (car l)) (cons (- (car l) 1) (cdr l))]
+      )
+    )
+  )
+
+;;Funcion que suma dos bigNum16 y retorna el resultado en bigNum16
+;;l1,l2 : bigNum16 -> bigNum16
+(define sumaHexa
+  (lambda (l1 l2)
+    (cond
+      [(is-zero? l2)l1]
+      [(is-zero? l1)l2]
+      [else (sumaHexa (successorHexa l1)(predecessorHexa l2))]
+      )
+    )
+  )
+;;Funcion que resta dos bigNum16 y retorna el resultado en bigNum16
+;;l1,l2 : bigNum16 -> bigNum16
+(define restaHexa
+  (lambda (l1 l2)
+    (cond
+      [(and (is-zero? l1)(not(is-zero? l2)))(eopl:error "No se cubren los resultados negativos")]
+      [(is-zero? l2)l1]
+      [(is-zero? l1)(0)]
+      [else (restaHexa (predecessorHexa l1)(successorHexa l2))]
+      )
+    )
+  )
+;;Funcion que multiplica dos bigNum16 y retorna el resultado en bigNum16
+;;op1,op2 : bigNum16 -> bigNum16
+(define multiHexa
+  (lambda (op1 op2)
+    (cond
+      [(or(is-zero? op1)(is-zero? op2))(0)]
+      [(is-zero? (predecessorHexa op2))op1]
+      [else (sumaHexa op1 (multiHexa op1 (predecessorHexa op2)))]
+      )
+    )
+  )
+
+;;Funcion que retorna el siguiente valor de un base 32
+;;bigNum32 -> bigNum32
+(define successor32
+  (lambda (l)
+    (cond
+      [(is-zero? l)'(1)]
+      [(< (car l) 31) (cons (+ 1 (car l)) (cdr l))]
+      [(eqv? 31 (car l)) (cons 0 (successor32 (cdr l)))]
+      )
+    )
+  )
+;;Funcion que retorna el valor previo de un bigNum32
+;;bigNum32 -> bigNum32
+(define predecessor32
+  (lambda (l)
+    (cond
+      [(and (is-zero? (list (car l)))(not (null?(cdr l)))) (cons 31 (predecessor32 (cdr l)))]
+      [(is-zero? l) (0)]
+      [(and (eqv? (car l) 1) (null? (cdr l))) empty]
+      [(> 32 (car l)) (cons (- (car l) 1) (cdr l))]
+      )
+    )
+  )
+
+;;Funcion que suma dos bigNum32 y retorna el resultado en bigNum32
+;;l1,l2 : bigNum32 -> bigNum32
+(define suma32
+  (lambda (l1 l2)
+    (cond
+      [(is-zero? l2)l1]
+      [(is-zero? l1)l2]
+      [else (suma32 (successor32 l1)(predecessor32 l2))]
+      )
+    )
+  )
+;;Funcion que resta dos bigNum32 y retorna el resultado en bigNum32
+;;l1,l2 : bigNum32 -> bigNum32
+(define resta32
+  (lambda (l1 l2)
+    (cond
+      [(and (is-zero? l1)(not(is-zero? l2)))(eopl:error "No se cubren los resultados negativos")]
+      [(is-zero? l2)l1]
+      [(is-zero? l1)(0)]
+      [else (resta32 (predecessor32 l1)(successor32 l2))]
+      )
+    )
+  )
+;;Funcion que multiplica dos bigNum32 y retorna el resultado en bigNum32
+;;op1,op2 : bigNum32 -> bigNum32
+(define multi32
+  (lambda (op1 op2)
+    (cond
+      [(or(is-zero? op1)(is-zero? op2))(0)]
+      [(is-zero? (predecessor32 op2))op1]
+      [else (suma32 op1 (multi32 op1 (predecessor32 op2)))]
+      )
+    )
+  )
+
 
 
 ;apply-primitiva-unaria: <primitiva> <expression> -> numero
@@ -300,9 +539,18 @@
 (define apply-primitiva-unaria
   (lambda(prim arg)
     (cases primitiva-unaria prim
+      ;;sobre cadena
       (primitiva-longitud () (string-length (normalizar arg)))
+      ;;sobre entero
       (primitiva-add1 () (+ arg 1))
       (primitiva-sub1 () (- arg 1))
+      ;;sobre base diferente
+      (primitiva-add1-octal() (successorOctal arg))
+      (primitiva-sub1-octal () (predecessorOctal arg))
+      (primitiva-add1-hexa() (successorHexa arg))
+      (primitiva-sub1-hexa () (predecessorHexa arg))
+      (primitiva-add1-32() (successor32 arg))
+      (primitiva-sub1-32 () (predecessor32 arg))
       
     )))
 
@@ -418,128 +666,3 @@ scan&parse
 
 ;******************************************************************************************
 ;Parte 2
-
-; Punto a
-; Programa que calcula el area de un circulo dado el radio del circulo.
-;
-;declarar(
-;  @radio=2.5;
-;  @areaCirculo=
-;       procedimiento(@radio)
-;            haga (@pi * (@radio * @radio))
-;       finProc
-;){
-;
-;  evaluar @areaCirculo(@radio) finEval
-;}
-;ejemplos
-;@radio=2 = 12.566368;
-;@radio=4 = 50.265472;
-
-;Punto b
-;Este programa se encarga de calcular el factorial de un número mediante la recursividad. La idea de esta función
-;es multiplicar todos los números que hay entre el número 1, y el número que se pase como parámetro.
-;declaraRec(
-;           @factorial(@n) = Si @n entonces (@n*evaluar @factorial(sub1(@n)) finEval) sino 1 finSI
-;           ){
-;             evaluar @factorial(5) finEval
-;             }
-;ejemplos
-;evaluar @factorial(5) finEval = 120
-;evaluar @factorial (10) finEval = 3628800
-
-
-;Punto c
-;Este programa recursivo utiliza la recursividad para sumar dos números. En este caso, en cada llamado recursivo se le va
-;restando una unidad al número @a, y a su vez sumando una unidad al número @b. Una vez el número @a llegue a 0, la función
-;retorna el valor almacenado en el número @b luego de todas las iteraciones.
-;declaraRec(
-;           @sumar(@a, @b) = Si @a entonces evaluar @sumar(sub1(@a), add1(@b)) finEval sino @b finSI
-;           ){
-;             evaluar @sumar(4, 5) finEval
-;             }
-;ejemplos
-;evaluar @sumar(4, 5) finEval = 9
-;evaluar @sumar(8, 8) finEval = 16
-
-;Punto d
-;Este programa permite restar y multiplicar dos números haciendo
-; uso solamente de las primitivas add1 y sub1.
-; Para la resta funciona decrementando el valor de las variables @a y @b.
-; Para la multiplicación funciona sumando el valor de @a las veces de @b hasta  que llegue a 0.
-;
-; declaraRec (
-;   @sumar(@a, @b) = Si @a entonces
-;     evaluar @sumar(sub1(@a), add1(@b)) finEval
-;     sino @b finSI
-;   @multiplicar (@a , @b) = Si @b entonces
-;     evaluar @sumar(@a, evaluar @multiplicar(@a,sub1(@b)) finEval) finEval
-;     sino 0 finSI
-;   @restar(@a , @b) = Si @b entonces
-;     evaluar @restar(sub1(@a),sub1(@b)) finEval
-;     sino @a finSI)
-;   {
-;    evaluar @multiplicar (10, 3) finEval  
-;   }
-;ejemplos
-;evaluar @multiplicar(4, 5) finEval = 20
-;evaluar @multiplicar (10, 3) finEval = 30
-;evaluar @restar (10, 3) finEval =7
-;evaluar @restar(8, 8) finEval = 0
-
-
-;Punto e
-;Es un programa que se encarga de crear en primer lugar una función @integrantes, la cual retorna el nombre
-; de los integrantes del grupo en forma de texto. Después se crea la función @saludar
-; que recibe @integrantes y retorna una función que concatena el string "Hola" junto
-; a la evaluación de @integrantes. Finalmente declara una variable @decorate que
-; almacenará justamente a la función retornada por la evaluación de @saludar con @integrantes.
-;
-;declarar(
-;     @integrantes = procedimiento() haga "Laura Cristian Santiago O Santiago T y Sebastian" finProc
-;){ 
-;   declarar(
-;     @saludar = procedimiento(@integrantes) haga
-;        procedimiento() haga ("Hola " concat evaluar @integrantes() finEval) finProc
-;        finProc
-;   ){
-;      declarar(
-;        @decorate = evaluar @saludar(@integrantes) finEval 
-;      ){
-;        evaluar @decorate() finEval
-;      } 
-;   }
-;}
-
-
-
-
-;Punto f
-;Es un programa que se encarga de crear en primer lugar una función @integrantes, la cual retorna el nombre
-; de los integrantes del grupo en forma de texto. Después se crea la función @saludar la cual recibe @integrantes y retorna
-; una función que recibe un parametro @mensaje, concatena el string "Hola" junto a la evaluación de @integrantes y al final concatena
-; el parametro @mensaje ingresado por el usuario.
-; Luego se declara la variable @decorate, quien evalua a @saludar con @integrantes, y en el cuerpo de la estructura declarar
-; se evalúa @decorate con el parámetro " ProfesoresFLP".
-;
-;declarar(
-;     @integrantes = procedimiento() haga "Laura Cristian Santiago O Santiago T y Sebastian" finProc
-;){ 
-;   declarar(
-;     @saludar = procedimiento(@integrantes) haga
-;        procedimiento(@mensaje) haga (("Hola " concat evaluar @integrantes() finEval) concat @mensaje) finProc
-;        finProc
-;   ){
-;      declarar(
-;        @decorate = evaluar @saludar(@integrantes) finEval 
-;      ){
-;        evaluar @decorate("_ProfesorFLP") finEval
-;      } 
-;   }
-;}
-;Ejemplos/Pruebas
-;evaluar @decorate(" Nos vemos en la próxima clase") finEval
-;evaluar @decorate("_Aprobaron la materia :D")
-
-
-
