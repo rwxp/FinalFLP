@@ -93,9 +93,12 @@
     (expression ("tupla""["(separated-list expression ",")"]") tupla)
     (expression ("{"(separated-list identifier "=" expression ",")"}") registro)
 
-    ;;Estructuras de control
+    
     (expression ("begin" expression (arbno ";" expression) "end")
                 begin-exp)
+    (expression ("set" identifier "=" expression)
+                set-exp)
+     ;;Estructuras de control
     (expression
      ("if" expr-bool "then" expression "[" "else" expression "]" "end") condicional-exp)
     (expression
@@ -217,9 +220,20 @@
 (define init-env
   (lambda ()
     (extend-env
-     '(@a @b @c @d @e @pi) 
-     '(1 2 3 "hola" "FLP" 3.141592) 
+     '(x y z)
+     (list (direct-target 1)
+           (direct-target 5)
+           (direct-target 10))
      (empty-env))))
+;**************************************************************************************
+;Definición tipos de datos referencia y target para manejar paso por valor y por ref.
+(define-datatype target target?
+  (direct-target (expval expval?))
+  (indirect-target (ref ref-to-direct-target?)))
+
+(define-datatype reference reference?
+  (a-ref (position integer?)
+         (vec vector?)))
 
 ; eval-expression: <expression> <enviroment> -> numero
 ; evalua la expresión para cada caso de la gramatica y recibe un ambiente
@@ -252,8 +266,13 @@
       (lista (values) values)
       (tupla(values) values)
       (registro(ids exps)ids)
-
-      ;;estructura de control
+      ;;Secuenciacion:
+      (set-exp (id rhs-exp)
+               (begin
+                 (setref!
+                  (apply-env-ref env id)
+                  (eval-expression rhs-exp env))
+                 1))
       (begin-exp (exp exps)
                  (let loop ((acc (eval-expression exp env))
                             (exps exps))
@@ -262,6 +281,8 @@
                        (loop (eval-expression (car exps) 
                                               env)
                              (cdr exps)))))
+
+      ;;estructura de control
       (condicional-exp (test-exp true-exp false-exp) (if (eval-bool-exp test-exp env) (eval-expression true-exp env)
                                                          (eval-expression false-exp env)))
       (while-exp(test-exp true-exp) test-exp)
@@ -284,7 +305,7 @@
       (app-exp (rator rands)
                (let ((proc (eval-expression rator env))
                      (args (eval-rands rands env)))
-                 (if (procVal? proc)
+                 (if (procval? proc)
                      (apply-procedure proc args)
                      (eopl:error 'eval-expression
                                  "Attempt to apply non-procedure ~s" proc))))
@@ -585,7 +606,7 @@
 
 ;Define el tipo de dato Procedimiento, el cual es una cerradura que se compone de:
 ; una lista de identificadores, seguido de una expresión y por último un ambiente.
-(define-datatype procVal procVal?
+(define-datatype procval procval?
   (cerradura
    (lista-ID (list-of symbol?))
    (exp expression?)
@@ -595,7 +616,7 @@
 ;apply-procedure: evalua el cuerpo de un procedimientos en el ambiente extendido correspondiente
 (define apply-procedure
   (lambda (proc args)
-    (cases procVal proc
+    (cases procval proc
       (cerradura (ids body env)
                (eval-expression body (extend-env ids args env))))))
 
@@ -603,18 +624,22 @@
 ;Ambientes
 
 ;definición del tipo de dato ambiente
+;(define-datatype environment environment?
+;  (empty-env-record)
+;  (extended-env-record (syms (list-of symbol?))
+;                       (vals (list-of scheme-value?))
+;                       (env environment?))
+;  (recursively-extended-env-record (proc-names (list-of symbol?))
+;                                   (idss (list-of (list-of symbol?)))
+;                                   (bodies (list-of expression?))
+;                                   (env environment?)))
+
 (define-datatype environment environment?
   (empty-env-record)
-  (extended-env-record (syms (list-of symbol?))
-                       (vals (list-of scheme-value?))
-                       (env environment?))
-  (recursively-extended-env-record (proc-names (list-of symbol?))
-                                   (idss (list-of (list-of symbol?)))
-                                   (bodies (list-of expression?))
-                                   (env environment?)))
-
-;Definicion de los tipos de dato booleano.
-(define scheme-value? (lambda (v) #t))
+  (extended-env-record
+   (syms (list-of symbol?))
+   (vec vector?)
+   (env environment?)))
 
 ;empty-env:    -> enviroment
 ;función que crea un ambiente vacío
@@ -622,46 +647,122 @@
   (lambda ()
     (empty-env-record)))       ;llamado al constructor de ambiente vacío 
 
-
-;extend-env: <list-of symbols> <list-of numbers> enviroment -> extended-enviroment
-;función que extiende un ambiente.
+;extend-env: <list-of symbols> <list-of numbers> enviroment -> enviroment
+;función que crea un ambiente extendido
 (define extend-env
   (lambda (syms vals env)
-    (extended-env-record syms vals env))) 
-
-;función que busca un símbolo en un ambiente
-(define buscar-variable
-  (lambda (env sym)
-    (cases environment env
-      (empty-env-record ()
-                        (eopl:error 'buscar-variable "No binding for ~s" sym))
-      (extended-env-record (syms vals env)
-                           (let ((pos (list-find-position sym syms)))
-                             (if (number? pos)
-                                 (list-ref vals pos)
-                                 (buscar-variable env sym))))
-      (recursively-extended-env-record (proc-names idss bodies old-env)
-                                       (let ((pos (list-find-position sym proc-names)))
-                                         (if (number? pos)
-                                             (cerradura (list-ref idss pos)
-                                                      (list-ref bodies pos)
-                                                      env)
-                                             (buscar-variable old-env sym)))))))
-
+    (extended-env-record syms (list->vector vals) env)))
 
 ;extend-env-recursively: <list-of symbols> <list-of <list-of symbols>> <list-of expressions> environment -> environment
 ;función que crea un ambiente extendido para procedimientos recursivos
 (define extend-env-recursively
   (lambda (proc-names idss bodies old-env)
-    (recursively-extended-env-record
-     proc-names idss bodies old-env)))
+    (let ((len (length proc-names)))
+      (let ((vec (make-vector len)))
+        (let ((env (extended-env-record proc-names vec old-env)))
+          (for-each
+            (lambda (pos ids body)
+              (vector-set! vec pos (direct-target (cerradura ids body env))))
+            (iota len) idss bodies)
+          env)))))
+
+;iota: number -> list
+;función que retorna una lista de los números desde 0 hasta end
+(define iota
+  (lambda (end)
+    (let loop ((next 0))
+      (if (>= next end) '()
+        (cons next (loop (+ 1 next)))))))
+
+;función que busca un símbolo en un ambiente (SIN SECUENCIACION NI PASO POR VALOR).
+;(define buscar-variable
+;  (lambda (env sym)
+;    (cases environment env
+;      (empty-env-record ()
+;                        (eopl:error 'buscar-variable "No binding for ~s" sym))
+;      (extended-env-record (syms vals env)
+;                           (let ((pos (list-find-position sym syms)))
+;                             (if (number? pos)
+;                                 (list-ref vals pos)
+;                                 (buscar-variable env sym))))
+;      (recursively-extended-env-record (proc-names idss bodies old-env)
+;                                       (let ((pos (list-find-position sym proc-names)))
+;                                         (if (number? pos)
+;                                             (cerradura (list-ref idss pos)
+;                                                      (list-ref bodies pos)
+;                                                      env)
+;                                             (buscar-variable old-env sym)))))))
+
+(define buscar-variable
+  (lambda (env sym)
+    (deref (apply-env-ref env sym))
+    ))
+
+(define apply-env-ref
+  (lambda (env sym)
+    (cases environment env
+      (empty-env-record ()
+                        (eopl:error 'apply-env-ref "No binding for ~s" sym))
+      (extended-env-record (syms vals env)
+                           (let ((pos (rib-find-position sym syms)))
+                             (if (number? pos)
+                                 (a-ref pos vals)
+                                 (apply-env-ref env sym)))))))
+;*******************************************************************************************
+;Blancos y Referencias
+
+(define expval?
+  (lambda (x)
+    (or (number? x) (procval? x))))
+
+(define ref-to-direct-target?
+  (lambda (x)
+    (and (reference? x)
+         (cases reference x
+           (a-ref (pos vec)
+                  (cases target (vector-ref vec pos)
+                    (direct-target (v) #t)
+                    (indirect-target (v) #f)))))))
+
+(define deref
+  (lambda (ref)
+    (cases target (primitive-deref ref)
+      (direct-target (expval) expval)
+      (indirect-target (ref1)
+                       (cases target (primitive-deref ref1)
+                         (direct-target (expval) expval)
+                         (indirect-target (p)
+                                          (eopl:error 'deref
+                                                      "Illegal reference: ~s" ref1)))))))
+(define primitive-deref
+  (lambda (ref)
+    (cases reference ref
+      (a-ref (pos vec)
+             (vector-ref vec pos)))))
+
+(define setref!
+  (lambda (ref expval)
+    (let
+        ((ref (cases target (primitive-deref ref)
+                (direct-target (expval1) ref)
+                (indirect-target (ref1) ref1))))
+      (primitive-setref! ref (direct-target expval)))))
+
+(define primitive-setref!
+  (lambda (ref val)
+    (cases reference ref
+      (a-ref (pos vec)
+             (vector-set! vec pos val)))))
 
 ;****************************************************************************************
 ;Funciones Auxiliares
 
 ; funciones auxiliares para encontrar la posición de un símbolo
-; en la lista de símbolos de unambiente
+; en la lista de símbolos de un ambiente
 
+(define rib-find-position 
+  (lambda (sym los)
+    (list-find-position sym los)))
 ;list-find-position: <symbol> <list-of-symbol> -> number
 (define list-find-position
   (lambda (sym los)
