@@ -12,16 +12,22 @@
 ;;
 ;;  <program>       ::= <expression>
 ;;                      un-programa (exp)>
-;;  <expression>    ::= <number>
-;;                      <numero-lit (datum)>
-;;                  ::= <identifier>
-;;                      <var-exp (id)>
-;;                  ::= var {<identifier> = <expression>}*(,) in <expression> Inspirado por Javascript
+;;  <expression>    ::= <numero>
+;;                      <numero (datum)>
+;;                  ::= <identificador>
+;;                      <identificador (id)>
+;;                  ::= var {<identificador> = <expression>}*(,) in <expression> Inspirado por Javascript
 ;;                      <decVar-exp (ids rands body)>  
-;;                  ::= const {<identifier> = <expression>}*(,) in <expression> Inspirado por Javascript
+;;                  ::= const {<identificador> = <expression>}*(,) in <expression> Inspirado por Javascript
 ;;                      <const-exp (ids exps body)>
-;;                  ::= rec {<identifier> = ({<identifier>}*(,)) = <expression>}* in <expression>
+;;                  ::= rec {<identificador> = ({<identificador>}*(,)) = <expression>}* in <expression>
 ;;                      <rec-exp (rators idss exps body)>
+;;                  ::= begin {<expression>}+(;) end   Inspirado por Racket.
+;;                      <begin-exp (exp exps)>
+;;                  ::= set <identificador> = <expression> Inspirado por Racket.
+;;                      <set-exp (id rhs)>
+;;                  :: <registro> ::= "{" {<identificador>=<expresion>}+(;) "}"
+;;                      <registro (ids exps)>
 ;; ENTREGA ANTERIOR:
 ;;                  ::= (<expression> <primitiva-binaria> <expression>)
 ;;                      <primapp-bin-exp (exp1 prim-binaria exp2)>
@@ -91,7 +97,7 @@
     ;;Constructores de Datos Predefinidos
     (expression ("["(separated-list expression ",")"]") lista)
     (expression ("tupla""["(separated-list expression ",")"]") tupla)
-    (expression ("{"(separated-list identifier "=" expression ",")"}") registro)
+    (expression ("{"(separated-list identifier "=" expression ";")"}") registro)
 
     
     (expression ("begin" expression (arbno ";" expression) "end")
@@ -265,7 +271,7 @@
       ;;datos predefinidos
       (lista (values) values)
       (tupla(values) values)
-      (registro(ids exps)ids)
+      (registro(ids exps) exps)
       ;;Secuenciacion:
       (set-exp (id rhs-exp)
                (begin
@@ -784,5 +790,16 @@
 just-scan
 scan&parse
 
+;;Ejemplos de scan&parse
+;numero
+(scan&parse "3")
+;identificador
+(scan&parse "x")
+;begin-exp
+(scan&parse "begin (3 +2); 2 end")
+;set-exp
+(scan&parse "set x=3")
+; registro
+(scan&parse "{x=4;y=3}")
 ;******************************************************************************************
 ;Parte 2
