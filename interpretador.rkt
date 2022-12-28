@@ -47,7 +47,7 @@
 '((white-sp
    (whitespace) skip)
   (comment
-   ("%" (arbno (not #\newline))) skip)
+   ("#" (arbno (not #\newline))) skip)
   (identifier
    (letter (arbno (or letter digit))) symbol)
   (text
@@ -55,7 +55,7 @@
               (arbno (or letter digit whitespace
                          "." "," ":" ";" "-" "*"
                          "{" "}" "+" "¡" "!" "¿"
-                         "?" "=" "'" "@" "#" "%"
+                         "?" "=" "'" "@" "#"
                          "$" "&" "/" "(" ")" ">" "<" "|"
                          )) "\"") string)
   (number
@@ -94,8 +94,8 @@
     (expression ("{"(separated-list identifier "=" expression ",")"}") registro)
 
     ;;Estructuras de control
-    (expression
-     ("begin" (separated-list expression ";") "end") begin-exp)
+    (expression ("begin" expression (arbno ";" expression) "end")
+                begin-exp)
     (expression
      ("if" expr-bool "then" expression "[" "else" expression "]" "end") condicional-exp)
     (expression
@@ -254,7 +254,14 @@
       (registro(ids exps)ids)
 
       ;;estructura de control
-      (begin-exp (exps) exps)
+      (begin-exp (exp exps)
+                 (let loop ((acc (eval-expression exp env))
+                            (exps exps))
+                   (if (null? exps) 
+                       acc
+                       (loop (eval-expression (car exps) 
+                                              env)
+                             (cdr exps)))))
       (condicional-exp (test-exp true-exp false-exp) (if (eval-bool-exp test-exp env) (eval-expression true-exp env)
                                                          (eval-expression false-exp env)))
       (while-exp(test-exp true-exp) test-exp)
