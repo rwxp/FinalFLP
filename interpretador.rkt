@@ -466,10 +466,9 @@
 (define restaHexa
   (lambda (l1 l2)
     (cond
-      [(and (is-zero? l1)(not(is-zero? l2)))(eopl:error "No se cubren los resultados negativos")]
+      [(and (is-zero? l1) (not(is-zero? l2))) (eopl:error "El programa no es capaz de procesar resultados negativos")]
       [(is-zero? l2)l1]
-      [(is-zero? l1)(0)]
-      [else (restaHexa (predecessorHexa l1)(successorHexa l2))]
+      [else (restaHexa (predecessorHexa l1)(predecessorHexa l2))]
       )
     )
   )
@@ -522,16 +521,17 @@
   )
 ;;Funcion que resta dos bigNum32 y retorna el resultado en bigNum32
 ;;l1,l2 : bigNum32 -> bigNum32
+
 (define resta32
   (lambda (l1 l2)
     (cond
-      [(and (is-zero? l1)(not(is-zero? l2)))(eopl:error "No se cubren los resultados negativos")]
+      [(and (is-zero? l1) (not(is-zero? l2))) (eopl:error "El programa no es capaz de procesar resultados negativos")]
       [(is-zero? l2)l1]
-      [(is-zero? l1)(0)]
-      [else (resta32 (predecessor32 l1)(successor32 l2))]
+      [else (resta32 (predecessor32 l1)(predecessor32 l2))]
       )
     )
   )
+
 ;;Funcion que multiplica dos bigNum32 y retorna el resultado en bigNum32
 ;;op1,op2 : bigNum32 -> bigNum32
 (define multi32
