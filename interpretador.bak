@@ -97,7 +97,7 @@
     
     ;;Constructores de Datos Predefinidos
     (expression ("["(separated-list expression ",")"]") lista)
-    (expression ("crear-tupla" "(" "tupla" "["(separated-list expression ",")"]" ")") tupla)
+    (expression ("tupla""["(separated-list expression ",")"]") tupla)
     (expression ("crear-registro" "(" "{"(separated-list identifier "=" expression ";")"}" ")") crear-registro)
     (expression ("registros?" "(" expression ")") registros?)
 
@@ -179,9 +179,6 @@
     ;;sobre cadenas
     (primitiva-unaria ("longitud") primitiva-longitud)
     (primitiva-binaria ("concat") primitiva-concat)
-
-     ;;sobre tuplas
-    (primitiva-unaria ("vacio?") primitiva-tupla-vacia?)	
     ))
 
 
@@ -370,12 +367,6 @@
   (lambda (rand env)
     (eval-expression rand env)))
 
-;Funcion que verifica si una tupla es vacia o no
-; t1: tupla->bool
-(define tupla-vacia?
-  (lambda (t)
-    (null? t)))
-
 ;apply-primitiva-binaria: <primitiva> <expression> <expression> -> numero | text
 ;proposito: aplica una función primitiva binaria a dos argumentos recibidos arg1 arg2
 (define apply-primitiva-binaria
@@ -400,7 +391,7 @@
       (primitiva-div () (/ arg1 arg2))
       (primitiva-mod () (modulo arg1 arg2))
       ;;aritmetica cadena
-      (primitiva-concat() (string-append arg1 arg2))
+      (primitiva-concat() (string-append arg1 arg2)) 
       )))
 ;-----------------------Estructuras de datos-------------
 (define-datatype registro registro?
@@ -608,9 +599,7 @@
       (primitiva-sub1-hexa () (predecessorHexa arg))
       (primitiva-add1-32() (successor32 arg))
       (primitiva-sub1-32 () (predecessor32 arg))
-
-      ;;aritmetica tupla
-      (primitiva-tupla-vacia? () (tupla-vacia? arg))
+      
     )))
 
 ;normalizar: función que elimina los backslash "\" de una string
