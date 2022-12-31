@@ -837,7 +837,6 @@ scan&parse
 (scan&parse "if and(true, false) then 1 [else 0] end")
 ;while-exp
 (scan&parse "begin while <(x,10) do set x=(x+1) done; x end")
-;decVar-exp
-(scan&parse "var n = 5 in n")
+; 
 ;******************************************************************************************
 ;Parte 2
