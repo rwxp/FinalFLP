@@ -97,8 +97,9 @@
     
     ;;Constructores de Datos Predefinidos
     (expression ("["(separated-list expression ",")"]") lista)
-    (expression ("crear-tupla" "(" "tupla" "["(separated-list expression ",")"]" ")") tupla-exp)
+    (expression ("crear-tupla" "(" "tupla" "[" expression (arbno "," expression) "]" ")") tupla-exp)
     (expression ("tupla?" "("  expression ")" ) tuplas?)
+    (expression ("vacio" "(" ")") vacia-tupla-exp)
     (expression ("vacio?" "(" expression ")") tupla-vacia?)
     (expression ("crear-registro" "(" "{"(separated-list identifier "=" expression ";")"}" ")") crear-registro)
     (expression ("registros?" "(" expression ")") registros?)
@@ -282,8 +283,9 @@
 
       ;;datos predefinidos
       (lista (values) values)
-      (tupla-exp(values) (una-tupla values))
+      (tupla-exp(value values) (aux-crear-tupla value values))
       (tuplas?(exp) (tupla? (eval-expression exp env)))
+      (vacia-tupla-exp () (tupla-vacia))
       (tupla-vacia?(exp) (empty-tupla? (eval-expression exp env)))
       (crear-registro(ids exps) (un-registro ids (eval-rands exps env)))
       (registros?(exp) (registro? (eval-expression exp env)))
@@ -342,7 +344,9 @@
                      (eopl:error 'eval-expression
                                  "Attempt to apply non-procedure ~s" proc))))
      )))
-
+(define aux-crear-tupla
+  (lambda (valor lista)
+    (una-tupla (append (list valor) lista))))
 (define eval-pred
   (lambda(pred)
     (cases pred-prim pred
@@ -823,7 +827,7 @@
 
 (define expval?
   (lambda (x)
-    (or (number? x) (procval? x) (registro? x) (boolean? x) (string? x))))
+    (or (number? x) (procval? x) (tupla? x) (registro? x) (boolean? x) (string? x))))
 
 (define ref-to-direct-target?
   (lambda (x)
