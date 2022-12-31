@@ -264,9 +264,10 @@
 
       ;;definiciones
       (decVar-exp (ids rands body)
-              (let ((args (eval-rands rands env)))
-                (eval-expression body
-                                 (extend-env ids args env))))
+              (let ((args (eval-var-rands rands env)))
+                 (eval-expression body
+                                  (extend-env ids args env))))
+      
       (const-exp (ids rands body) ids)
       
       (rec-exp (proc-names idss bodies letrec-body)
@@ -369,6 +370,20 @@
 (define eval-rand
   (lambda (rand env)
     (eval-expression rand env)))
+
+;eval-var-rand: funcion auxiliar para aplicar eval-expression a un elemento direct-target
+;de una lista de operandos(expresiones)
+;<struc-rand> <environment> -> <numero>
+(define eval-var-rand
+  (lambda (rand env)
+    (direct-target (eval-expression rand env))))
+
+;eval-var-rands: funcion auxiliar para aplicar eval-var-rand a cada elemento de una lista
+;de operandos(expresiones)
+;<lista> <environment> -> <lista>
+(define eval-var-rands
+  (lambda (rands env)
+    (map (lambda (x) (eval-var-rand x env)) rands)))
 
 ;Funcion que verifica si una tupla es vacia o no
 ; t1: tupla->bool
