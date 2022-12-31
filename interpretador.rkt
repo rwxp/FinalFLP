@@ -29,6 +29,9 @@
 ;;                      <set-exp (id rhs)>
 ;;                  :: <registro> ::= "{" {<identificador>=<expresion>}+(;) "}"
 ;;                      <registro (ids exps)>
+;;                  ::= for <identificador> = <expresion>
+;;                        to <expresion> do
+;;                        <expresion > done
 ;; ENTREGA ANTERIOR:
 ;;                  ::= (<expression> <primitiva-binaria> <expression>)
 ;;                      <primapp-bin-exp (exp1 prim-binaria exp2)>
@@ -308,8 +311,13 @@
                   (if (eval-expression test-exp env)
                         (begin (eval-expression true-exp env)
                         (loop)) 'break)))
-      (for-exp (id init-value final-value body) id)
-     
+      
+      (for-exp (id init-value final-value body)
+               (let loop ([id (eval-expression init-value env)])
+                 (begin
+                 (when (< id (eval-expression final-value env))
+                   (eval-expression body env) 
+                    (loop (+ id 1))))) )
       
       ;;aplicar primitivas unaria y binaria
       (primapp-bin-exp (rand1 prim-bin rand2)
@@ -837,6 +845,8 @@ scan&parse
 (scan&parse "if and(true, false) then 1 [else 0] end")
 ;while-exp
 (scan&parse "begin while <(x,10) do set x=(x+1) done; x end")
+;for-exp
+(scan&parse "begin for i=0 to 10 do set x= 3  done; x end")
 ;decVar-exp
 (scan&parse "var n = 5 in n")
 ;******************************************************************************************
