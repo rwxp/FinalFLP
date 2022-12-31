@@ -268,7 +268,13 @@
                  (eval-expression body
                                   (extend-env ids args env))))
       
-      (const-exp (ids rands body) ids)
+      (const-exp (ids rands body)
+                  (let ((args (eval-var-rands rands env))
+                       (idss (map-const-ids ids env)))
+                   (if (element-in-list? idss #t)
+                        (eopl:error 'const-exp "one or more constanst were already declared before")
+                        (eval-expression body (extend-env ids args env))
+                        )))
       
       (rec-exp (proc-names idss bodies letrec-body)
                   (eval-expression letrec-body
@@ -359,6 +365,12 @@
      )
     )
   )
+
+;map-const-ids: función auxiliar que hace un mapeo de una lista de elementos verificando si se encuentra uno en un ambiente.
+;<listae> <environment> -> <lista>
+(define map-const-ids
+  (lambda (elem env)
+    (map (lambda (x) (element-in-env? x env)) elem)))
 
 
 ; eval-rands: funciones auxiliares para aplicar eval-rand a cada elemento de una 
@@ -746,6 +758,20 @@
                              (if (number? pos)
                                  (a-ref pos vals)
                                  (apply-env-ref env sym)))))))
+
+
+(define element-in-env?
+  (lambda (elem env)
+    (cases environment env
+      (empty-env-record ()
+                        #f)
+      (extended-env-record (syms vals env)
+                           (let ((ids syms))
+                               (if (element-in-list? ids elem)
+                                   #t
+                                   (element-in-env? elem env)
+                                )))
+                        )))
 ;*******************************************************************************************
 ;Blancos y Referencias
 
@@ -817,6 +843,15 @@
                 (+ list-index-r 1)
                 #f))))))
 
+;element-in-list?: función auxiliar que determina si un elemento se encuentra en una lista.
+;<list> <scheme-value> -> bool
+(define element-in-list?
+  (lambda (lst elem)
+    (cond
+      ((null? lst) #f)
+      ((equal? (car lst) elem) #t)
+      (else (element-in-list? (cdr lst) elem)))
+       ))
 
 (show-the-datatypes)
 just-scan
