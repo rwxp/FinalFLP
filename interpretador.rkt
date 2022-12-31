@@ -100,7 +100,8 @@
     (expression ("crear-tupla" "(" "tupla" "["(separated-list expression ",")"]" ")") tupla)
     (expression ("crear-registro" "(" "{"(separated-list identifier "=" expression ";")"}" ")") crear-registro)
     (expression ("registros?" "(" expression ")") registros?)
-
+    (expression("ref-registro" "(" identifier "," expression ")") ref-registro)
+    (expression("set-registro" "(" identifier "," expression "," expression")") set-registro)
     
     (expression ("begin" expression (arbno ";" expression) "end")
                 begin-exp)
@@ -283,8 +284,10 @@
       ;;datos predefinidos
       (lista (values) values)
       (tupla(values) values)
-      (crear-registro(ids exps) (un-registro ids exps))
+      (crear-registro(ids exps) (un-registro ids (eval-rands exps env)))
       (registros?(exp) (registro? (eval-expression exp env)))
+      (ref-registro(key registro) (get-value key (eval-expression registro env)))
+      (set-registro(key value registro) (set-value key (eval-expression value env) (eval-expression registro env)))
       ;;Secuenciacion:
       (set-exp (id rhs-exp)
                (begin
@@ -433,10 +436,54 @@
       ;;aritmetica cadena
       (primitiva-concat() (string-append arg1 arg2))
       )))
-;-----------------------Estructuras de datos-------------
+;-----------------------Estructuras de datos (registro) y funciones-------------
 (define-datatype registro registro?
   (vacio)
-  (un-registro (ids (list-of symbol?)) (exps (list-of expression?))))
+  (un-registro (ids (list-of symbol?)) (exps (list-of expval?))))
+
+(define get-value
+  (lambda(id reg)
+    (cases registro reg
+      (vacio() (eopl:error "Está intentando obtener un elemento de un registro vacío"))
+      (un-registro(ids exps) (search-value id ids exps))
+      )
+    )
+  )
+
+(define search-value
+  (lambda(id ids exps)
+    (cond
+      [(eqv? ids '()) (eopl:error "La clave que ingresó no tiene un valor asociado")]
+      [(eqv? id (car ids)) (car exps)]
+      [else (search-value id (cdr ids) (cdr exps))]
+      ))
+  )
+
+(define set-value
+  (lambda(id value reg)
+    (cases registro reg
+      (vacio() (eopl:error "El registro está vacío, no tiene elementos para modificar"))
+      (un-registro(ids exps) (un-registro ids (set-index (list->vector exps)(get-index 0 id ids) value)))
+      )
+    )
+  )
+
+(define set-index
+  (lambda(vec indx value)
+    (begin
+      (vector-set! vec indx value)
+      (set! vec (vector->list vec))
+      vec
+      )
+    ))
+
+(define get-index
+  (lambda(index id ids)
+    (cond
+      [(eqv? ids '()) #f]
+      [(eqv? id (car ids)) index]
+      [else (get-index (+ index 1) id (cdr ids))])
+    ))
 
 ;---------Funciones que operan con los numeros en las bases 8, 16, 32 -----------
 (define is-zero?
@@ -777,7 +824,7 @@
 
 (define expval?
   (lambda (x)
-    (or (number? x) (procval? x) (registro? x) (boolean? x) )))
+    (or (number? x) (procval? x) (registro? x) (boolean? x) (string? x))))
 
 (define ref-to-direct-target?
   (lambda (x)
@@ -870,6 +917,12 @@ scan&parse
 (scan&parse "crear-registro({x=4;y=3})")
 ;condicional-exp
 (scan&parse "if and(true, false) then 1 [else 0] end")
+;(scan&parse "begin
+;     set x = crear-registro({y=3});
+;    set y = ref-registro(w,  crear-registro({w=18}));
+;    y
+;end")
+; 
 ;while-exp
 (scan&parse "begin while <(x,10) do set x=(x+1) done; x end")
 ;decVar-exp
