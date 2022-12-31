@@ -97,7 +97,9 @@
     
     ;;Constructores de Datos Predefinidos
     (expression ("["(separated-list expression ",")"]") lista)
-    (expression ("crear-tupla" "(" "tupla" "["(separated-list expression ",")"]" ")") tupla)
+    (expression ("crear-tupla" "(" "tupla" "["(separated-list expression ",")"]" ")") tupla-exp)
+    (expression ("tupla?" "("  expression ")" ) tuplas?)
+    (expression ("vacio?" "(" expression ")") tupla-vacia?)
     (expression ("crear-registro" "(" "{"(separated-list identifier "=" expression ";")"}" ")") crear-registro)
     (expression ("registros?" "(" expression ")") registros?)
     (expression("ref-registro" "(" identifier "," expression ")") ref-registro)
@@ -179,10 +181,7 @@
 
     ;;sobre cadenas
     (primitiva-unaria ("longitud") primitiva-longitud)
-    (primitiva-binaria ("concat") primitiva-concat)
-
-     ;;sobre tuplas
-    (primitiva-unaria ("vacio?") primitiva-tupla-vacia?)	
+    (primitiva-binaria ("concat") primitiva-concat)	
     ))
 
 
@@ -283,7 +282,9 @@
 
       ;;datos predefinidos
       (lista (values) values)
-      (tupla(values) values)
+      (tupla-exp(values) (una-tupla values))
+      (tuplas?(exp) (tupla? (eval-expression exp env)))
+      (tupla-vacia?(exp) (empty-tupla? (eval-expression exp env)))
       (crear-registro(ids exps) (un-registro ids (eval-rands exps env)))
       (registros?(exp) (registro? (eval-expression exp env)))
       (ref-registro(key registro) (get-value key (eval-expression registro env)))
@@ -369,6 +370,8 @@
     )
   )
 
+(define empty-tupla? (lambda(tpl) (cases tupla tpl (tupla-vacia () #t) (else #f) )))
+
 ;map-const-ids: función auxiliar que hace un mapeo de una lista de elementos verificando si se encuentra uno en un ambiente.
 ;<listae> <environment> -> <lista>
 (define map-const-ids
@@ -404,11 +407,6 @@
   (lambda (rands env)
     (map (lambda (x) (eval-var-rand x env)) rands)))
 
-;Funcion que verifica si una tupla es vacia o no
-; t1: tupla->bool
-(define tupla-vacia?
-  (lambda (t)
-    (null? t)))
 
 ;apply-primitiva-binaria: <primitiva> <expression> <expression> -> numero | text
 ;proposito: aplica una función primitiva binaria a dos argumentos recibidos arg1 arg2
@@ -440,6 +438,10 @@
 (define-datatype registro registro?
   (vacio)
   (un-registro (ids (list-of symbol?)) (exps (list-of expval?))))
+
+(define-datatype tupla tupla?
+  (tupla-vacia)
+  (una-tupla (exps (list-of expression?))))
 
 (define get-value
   (lambda(id reg)
@@ -686,9 +688,6 @@
       (primitiva-sub1-hexa () (predecessorHexa arg))
       (primitiva-add1-32() (successor32 arg))
       (primitiva-sub1-32 () (predecessor32 arg))
-
-      ;;aritmetica tupla
-      (primitiva-tupla-vacia? () (tupla-vacia? arg))
     )))
 
 ;normalizar: función que elimina los backslash "\" de una string
