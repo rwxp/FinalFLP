@@ -100,10 +100,14 @@
     
     ;;Constructores de Datos Predefinidos
     (expression ("["(separated-list expression ",")"]") lista)
-    (expression ("crear-tupla" "(" "tupla" "["(separated-list expression ",")"]" ")") tupla)
+    (expression ("crear-tupla" "(" "tupla" "[" expression (arbno "," expression) "]" ")") tupla-exp)
+    (expression ("tupla?" "("  expression ")" ) tuplas?)
+    (expression ("vacio" "(" ")") vacia-tupla-exp)
+    (expression ("vacio?" "(" expression ")") tupla-vacia?)
     (expression ("crear-registro" "(" "{"(separated-list identifier "=" expression ";")"}" ")") crear-registro)
     (expression ("registros?" "(" expression ")") registros?)
-
+    (expression("ref-registro" "(" identifier "," expression ")") ref-registro)
+    (expression("set-registro" "(" identifier "," expression "," expression")") set-registro)
     
     (expression ("begin" expression (arbno ";" expression) "end")
                 begin-exp)
@@ -181,10 +185,7 @@
 
     ;;sobre cadenas
     (primitiva-unaria ("longitud") primitiva-longitud)
-    (primitiva-binaria ("concat") primitiva-concat)
-
-     ;;sobre tuplas
-    (primitiva-unaria ("vacio?") primitiva-tupla-vacia?)	
+    (primitiva-binaria ("concat") primitiva-concat)	
     ))
 
 
@@ -271,7 +272,13 @@
                  (eval-expression body
                                   (extend-env ids args env))))
       
-      (const-exp (ids rands body) ids)
+      (const-exp (ids rands body)
+                  (let ((args (eval-var-rands rands env))
+                       (idss (map-const-ids ids env)))
+                   (if (element-in-list? idss #t)
+                        (eopl:error 'const-exp "one or more constanst were already declared before")
+                        (eval-expression body (extend-env ids args env))
+                        )))
       
       (rec-exp (proc-names idss bodies letrec-body)
                   (eval-expression letrec-body
@@ -279,9 +286,14 @@
 
       ;;datos predefinidos
       (lista (values) values)
-      (tupla(values) values)
-      (crear-registro(ids exps) (un-registro ids exps))
+      (tupla-exp(value values) (aux-crear-tupla value values))
+      (tuplas?(exp) (tupla? (eval-expression exp env)))
+      (vacia-tupla-exp () (tupla-vacia))
+      (tupla-vacia?(exp) (empty-tupla? (eval-expression exp env)))
+      (crear-registro(ids exps) (un-registro ids (eval-rands exps env)))
       (registros?(exp) (registro? (eval-expression exp env)))
+      (ref-registro(key registro) (get-value key (eval-expression registro env)))
+      (set-registro(key value registro) (set-value key (eval-expression value env) (eval-expression registro env)))
       ;;Secuenciacion:
       (set-exp (id rhs-exp)
                (begin
@@ -340,7 +352,9 @@
                      (eopl:error 'eval-expression
                                  "Attempt to apply non-procedure ~s" proc))))
      )))
-
+(define aux-crear-tupla
+  (lambda (valor lista)
+    (una-tupla (append (list valor) lista))))
 (define eval-pred
   (lambda(pred)
     (cases pred-prim pred
@@ -367,6 +381,14 @@
      )
     )
   )
+
+(define empty-tupla? (lambda(tpl) (cases tupla tpl (tupla-vacia () #t) (else #f) )))
+
+;map-const-ids: función auxiliar que hace un mapeo de una lista de elementos verificando si se encuentra uno en un ambiente.
+;<listae> <environment> -> <lista>
+(define map-const-ids
+  (lambda (elem env)
+    (map (lambda (x) (element-in-env? x env)) elem)))
 
 
 ; eval-rands: funciones auxiliares para aplicar eval-rand a cada elemento de una 
@@ -397,11 +419,6 @@
   (lambda (rands env)
     (map (lambda (x) (eval-var-rand x env)) rands)))
 
-;Funcion que verifica si una tupla es vacia o no
-; t1: tupla->bool
-(define tupla-vacia?
-  (lambda (t)
-    (null? t)))
 
 ;apply-primitiva-binaria: <primitiva> <expression> <expression> -> numero | text
 ;proposito: aplica una función primitiva binaria a dos argumentos recibidos arg1 arg2
@@ -429,10 +446,58 @@
       ;;aritmetica cadena
       (primitiva-concat() (string-append arg1 arg2))
       )))
-;-----------------------Estructuras de datos-------------
+;-----------------------Estructuras de datos (registro) y funciones-------------
 (define-datatype registro registro?
   (vacio)
-  (un-registro (ids (list-of symbol?)) (exps (list-of expression?))))
+  (un-registro (ids (list-of symbol?)) (exps (list-of expval?))))
+
+(define-datatype tupla tupla?
+  (tupla-vacia)
+  (una-tupla (exps (list-of expression?))))
+
+(define get-value
+  (lambda(id reg)
+    (cases registro reg
+      (vacio() (eopl:error "Está intentando obtener un elemento de un registro vacío"))
+      (un-registro(ids exps) (search-value id ids exps))
+      )
+    )
+  )
+
+(define search-value
+  (lambda(id ids exps)
+    (cond
+      [(eqv? ids '()) (eopl:error "La clave que ingresó no tiene un valor asociado")]
+      [(eqv? id (car ids)) (car exps)]
+      [else (search-value id (cdr ids) (cdr exps))]
+      ))
+  )
+
+(define set-value
+  (lambda(id value reg)
+    (cases registro reg
+      (vacio() (eopl:error "El registro está vacío, no tiene elementos para modificar"))
+      (un-registro(ids exps) (un-registro ids (set-index (list->vector exps)(get-index 0 id ids) value)))
+      )
+    )
+  )
+
+(define set-index
+  (lambda(vec indx value)
+    (begin
+      (vector-set! vec indx value)
+      (set! vec (vector->list vec))
+      vec
+      )
+    ))
+
+(define get-index
+  (lambda(index id ids)
+    (cond
+      [(eqv? ids '()) #f]
+      [(eqv? id (car ids)) index]
+      [else (get-index (+ index 1) id (cdr ids))])
+    ))
 
 ;---------Funciones que operan con los numeros en las bases 8, 16, 32 -----------
 (define is-zero?
@@ -635,9 +700,6 @@
       (primitiva-sub1-hexa () (predecessorHexa arg))
       (primitiva-add1-32() (successor32 arg))
       (primitiva-sub1-32 () (predecessor32 arg))
-
-      ;;aritmetica tupla
-      (primitiva-tupla-vacia? () (tupla-vacia? arg))
     )))
 
 ;normalizar: función que elimina los backslash "\" de una string
@@ -754,12 +816,26 @@
                              (if (number? pos)
                                  (a-ref pos vals)
                                  (apply-env-ref env sym)))))))
+
+
+(define element-in-env?
+  (lambda (elem env)
+    (cases environment env
+      (empty-env-record ()
+                        #f)
+      (extended-env-record (syms vals env)
+                           (let ((ids syms))
+                               (if (element-in-list? ids elem)
+                                   #t
+                                   (element-in-env? elem env)
+                                )))
+                        )))
 ;*******************************************************************************************
 ;Blancos y Referencias
 
 (define expval?
   (lambda (x)
-    (or (number? x) (procval? x) (registro? x) (boolean? x) )))
+    (or (number? x) (procval? x) (tupla? x) (registro? x) (boolean? x) (string? x))))
 
 (define ref-to-direct-target?
   (lambda (x)
@@ -825,6 +901,15 @@
                 (+ list-index-r 1)
                 #f))))))
 
+;element-in-list?: función auxiliar que determina si un elemento se encuentra en una lista.
+;<list> <scheme-value> -> bool
+(define element-in-list?
+  (lambda (lst elem)
+    (cond
+      ((null? lst) #f)
+      ((equal? (car lst) elem) #t)
+      (else (element-in-list? (cdr lst) elem)))
+       ))
 
 (show-the-datatypes)
 just-scan
@@ -843,6 +928,12 @@ scan&parse
 (scan&parse "crear-registro({x=4;y=3})")
 ;condicional-exp
 (scan&parse "if and(true, false) then 1 [else 0] end")
+;(scan&parse "begin
+;     set x = crear-registro({y=3});
+;    set y = ref-registro(w,  crear-registro({w=18}));
+;    y
+;end")
+; 
 ;while-exp
 (scan&parse "begin while <(x,10) do set x=(x+1) done; x end")
 ;for-exp
