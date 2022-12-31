@@ -302,7 +302,11 @@
       (pred-bool (pred exp1 exp2) ((eval-pred pred) (eval-expression exp1 env) (eval-expression exp2 env)))
       (oper-binaria-bool (op exp1 exp2) (apply-bool-binaria op (eval-expression exp1 env) (eval-expression exp2 env)))
       (oper-unaria-bool (op exp1) (apply-bool-unaria op (eval-expression exp1 env)))
-      (while-exp(test-exp true-exp) test-exp)
+      (while-exp (test-exp true-exp)
+                (let loop ()
+                  (if (eval-expression test-exp env)
+                        (begin (eval-expression true-exp env)
+                        (loop)) 'break)))
       (for-exp (id init-value final-value body) id)
      
       
@@ -816,6 +820,8 @@ scan&parse
 (scan&parse "crear-registro({x=4;y=3})")
 ;condicional-exp
 (scan&parse "if and(true, false) then 1 [else 0] end")
+;while-exp
+(scan&parse "begin while <(x,10) do set x=(x+1) done; x end")
 ; 
 ;******************************************************************************************
 ;Parte 2
