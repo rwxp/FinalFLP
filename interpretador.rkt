@@ -97,7 +97,7 @@
     
     ;;Constructores de Datos Predefinidos
     (expression ("["(separated-list expression ",")"]") lista)
-    (expression ("tupla""["(separated-list expression ",")"]") tupla)
+    (expression ("crear-tupla" "(" "tupla" "["(separated-list expression ",")"]" ")") tupla)
     (expression ("crear-registro" "(" "{"(separated-list identifier "=" expression ";")"}" ")") crear-registro)
     (expression ("registros?" "(" expression ")") registros?)
     (expression("ref-registro" "(" identifier "," expression ")") ref-registro)
@@ -180,6 +180,9 @@
     ;;sobre cadenas
     (primitiva-unaria ("longitud") primitiva-longitud)
     (primitiva-binaria ("concat") primitiva-concat)
+
+     ;;sobre tuplas
+    (primitiva-unaria ("vacio?") primitiva-tupla-vacia?)	
     ))
 
 
@@ -262,9 +265,10 @@
 
       ;;definiciones
       (decVar-exp (ids rands body)
-              (let ((args (eval-rands rands env)))
-                (eval-expression body
-                                 (extend-env ids args env))))
+              (let ((args (eval-var-rands rands env)))
+                 (eval-expression body
+                                  (extend-env ids args env))))
+      
       (const-exp (ids rands body) ids)
       
       (rec-exp (proc-names idss bodies letrec-body)
@@ -302,7 +306,11 @@
       (pred-bool (pred exp1 exp2) ((eval-pred pred) (eval-expression exp1 env) (eval-expression exp2 env)))
       (oper-binaria-bool (op exp1 exp2) (apply-bool-binaria op (eval-expression exp1 env) (eval-expression exp2 env)))
       (oper-unaria-bool (op exp1) (apply-bool-unaria op (eval-expression exp1 env)))
-      (while-exp(test-exp true-exp) test-exp)
+      (while-exp (test-exp true-exp)
+                (let loop ()
+                  (if (eval-expression test-exp env)
+                        (begin (eval-expression true-exp env)
+                        (loop)) 'break)))
       (for-exp (id init-value final-value body) id)
      
       
@@ -370,6 +378,26 @@
   (lambda (rand env)
     (eval-expression rand env)))
 
+;eval-var-rand: funcion auxiliar para aplicar eval-expression a un elemento direct-target
+;de una lista de operandos(expresiones)
+;<struc-rand> <environment> -> <numero>
+(define eval-var-rand
+  (lambda (rand env)
+    (direct-target (eval-expression rand env))))
+
+;eval-var-rands: funcion auxiliar para aplicar eval-var-rand a cada elemento de una lista
+;de operandos(expresiones)
+;<lista> <environment> -> <lista>
+(define eval-var-rands
+  (lambda (rands env)
+    (map (lambda (x) (eval-var-rand x env)) rands)))
+
+;Funcion que verifica si una tupla es vacia o no
+; t1: tupla->bool
+(define tupla-vacia?
+  (lambda (t)
+    (null? t)))
+
 ;apply-primitiva-binaria: <primitiva> <expression> <expression> -> numero | text
 ;proposito: aplica una función primitiva binaria a dos argumentos recibidos arg1 arg2
 (define apply-primitiva-binaria
@@ -394,7 +422,7 @@
       (primitiva-div () (/ arg1 arg2))
       (primitiva-mod () (modulo arg1 arg2))
       ;;aritmetica cadena
-      (primitiva-concat() (string-append arg1 arg2)) 
+      (primitiva-concat() (string-append arg1 arg2))
       )))
 ;-----------------------Estructuras de datos (registro) y funciones-------------
 (define-datatype registro registro?
@@ -646,7 +674,9 @@
       (primitiva-sub1-hexa () (predecessorHexa arg))
       (primitiva-add1-32() (successor32 arg))
       (primitiva-sub1-32 () (predecessor32 arg))
-      
+
+      ;;aritmetica tupla
+      (primitiva-tupla-vacia? () (tupla-vacia? arg))
     )))
 
 ;normalizar: función que elimina los backslash "\" de una string
@@ -854,10 +884,13 @@ scan&parse
 (scan&parse "if and(true, false) then 1 [else 0] end")
 ;(scan&parse "begin
 ;     set x = crear-registro({y=3});
-;    set y = ref-registro(w,  crear-registro({w=69}));
+;    set y = ref-registro(w,  crear-registro({w=18}));
 ;    y
-;end
-;69")
+;end")
 ; 
+;while-exp
+(scan&parse "begin while <(x,10) do set x=(x+1) done; x end")
+;decVar-exp
+(scan&parse "var n = 5 in n")
 ;******************************************************************************************
 ;Parte 2
