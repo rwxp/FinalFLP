@@ -151,9 +151,9 @@
 
     ;;procedimiento
     (expression
-     ("procedimiento" "(" (separated-list identifier ",") ")" "haga" expression "finProc") procedimiento-ex)
+     ("procedure" "(" (separated-list identifier ",") ")" "do" expression "end") procedimiento-ex)
     ;;recursiva
-    (expression ( "evaluar" expression "("(separated-list expression ",") ")"  "finEval" ) app-exp)
+    (expression ("eval" expression "("(separated-list expression ",") ")"  ";" ) app-exp)
     
 
     ;;sobre enteros
@@ -355,7 +355,8 @@
                      (apply-procedure proc args)
                      (eopl:error 'eval-expression
                                  "Attempt to apply non-procedure ~s" proc))))
-     )))
+      )))
+
 
  (define cabeza-tupla
    (lambda (tp1)
@@ -413,6 +414,22 @@
 ; <structure-rand> <enviroment> -> <numero>
 (define eval-rand
   (lambda (rand env)
+    (cases expression rand
+      (identificador (id)
+               (indirect-target
+                (let ((ref (apply-env-ref env id)))
+                  (cases target (primitive-deref ref)
+                    (direct-target (expval) ref)
+                    (indirect-target (ref1) ref1)))))
+      (else
+       (direct-target (eval-expression rand env))))))
+;eval-regular-rands: Funcion cuya finalidad es evaluar ids sin realizar la creacion de targets.
+(define eval-regular-rands
+  (lambda(rands env)
+    (map (lambda(x)(eval-regular-rand x env)) rands)))
+
+(define eval-regular-rand
+  (lambda(rand env)
     (eval-expression rand env)))
 
 ;eval-var-rand: funcion auxiliar para aplicar eval-expression a un elemento direct-target
@@ -970,15 +987,14 @@ scan&parse
 (scan&parse "begin (3 +2); 2 end")
 ;set-exp
 (scan&parse "set x=3")
-; registro
-(scan&parse "crear-registro({x=4;y=3})")
 ;condicional-exp
 (scan&parse "if and(true, false) then 1 [else 0] end")
-;(scan&parse "begin
-;     set x = crear-registro({y=3});
-;    set y = ref-registro(w,  crear-registro({w=18}));
-;    y
-;end")
+(scan&parse "begin
+    set x = crear-registro({y=3});
+    set z = set-registro(y, 5, x);
+    set y = ref-registro(w,  crear-registro({w=18}));
+    y
+end")
 ; 
 ;while-exp
 (scan&parse "begin while <(x,10) do set x=(x+1) done; x end")
