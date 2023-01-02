@@ -991,10 +991,18 @@ scan&parse
 (scan&parse "if and(true, false) then 1 [else 0] end")
 (scan&parse "begin
     set x = crear-registro({y=3});
-    set z = set-registro(y, 5, x);
+    if registros?(x) then set z = set-registro(y, 5, x)
+       [else 0] end;  
     set y = ref-registro(w,  crear-registro({w=18}));
     y
 end")
+; rec-exp y app-exp
+(scan&parse "rec 
+     factorial(n) = 
+       if ==(n, 0) then 1
+      [else (n * eval factorial(sub1(n));)] end
+    in
+     eval factorial(4);")
 ; 
 ;while-exp
 (scan&parse "begin while <(x,10) do set x=(x+1) done; x end")
