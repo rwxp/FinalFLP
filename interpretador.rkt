@@ -104,6 +104,8 @@
     (expression ("tupla?" "("  expression ")" ) tuplas?)
     (expression ("vacio" "(" ")") vacia-tupla-exp)
     (expression ("vacio?" "(" expression ")") tupla-vacia?)
+    (expression ("cabeza" "(" expression ")") cabeza-tupla-exp)
+    (expression ("cola" "(" expression ")") cola-tupla-exp)
     (expression ("crear-registro" "(" "{"(separated-list identifier "=" expression ";")"}" ")") crear-registro)
     (expression ("registros?" "(" expression ")") registros?)
     (expression("ref-registro" "(" identifier "," expression ")") ref-registro)
@@ -289,6 +291,8 @@
       (tupla-exp(value values) (aux-crear-tupla value values))
       (tuplas?(exp) (tupla? (eval-expression exp env)))
       (vacia-tupla-exp () (tupla-vacia))
+      (cabeza-tupla-exp(exp) (get-cabeza-tupla 0 (eval-expression exp env) env))
+      (cola-tupla-exp(exp) (get-cola-tupla (eval-expression exp env) env))
       (tupla-vacia?(exp) (empty-tupla? (eval-expression exp env)))
       (crear-registro(ids exps) (un-registro ids (eval-rands exps env)))
       (registros?(exp) (registro? (eval-expression exp env)))
@@ -352,6 +356,12 @@
                      (eopl:error 'eval-expression
                                  "Attempt to apply non-procedure ~s" proc))))
      )))
+
+ (define cabeza-tupla
+   (lambda (tp1)
+     (cases tupla tp1
+       (una-tupla (tp1) #t)
+       (else #f))))
 (define aux-crear-tupla
   (lambda (valor lista)
     (una-tupla (append (list valor) lista))))
@@ -454,6 +464,42 @@
 (define-datatype tupla tupla?
   (tupla-vacia)
   (una-tupla (exps (list-of expression?))))
+
+(define get-cola-tupla
+  (lambda(tp1 env)
+    (cases tupla tp1
+      (tupla-vacia() (eopl:error "Está intentando obtener un elemento de una tupla vacío"))
+      (una-tupla(exps) (search-cola-tupla exps env))
+      )
+    )
+  )
+
+(define search-cola-tupla
+  (lambda(exps env)
+    (cond
+      [(null? (cdr exps)) (eval-expression (car exps) env)]
+      ;[(eqv? index 0) (eval-expression (car exps) env)]
+      [else (search-cola-tupla (cdr exps) env)]
+      ))
+  )
+
+(define get-cabeza-tupla
+  (lambda(index tp1 env)
+    (cases tupla tp1
+      (tupla-vacia() (eopl:error "Está intentando obtener un elemento de una tupla vacío"))
+      (una-tupla(exps) (search-value-tupla index exps env))
+      )
+    )
+  )
+
+(define search-value-tupla
+  (lambda(index exps env)
+    (cond
+      [(eqv? index '()) #t]
+      [(eqv? index 0) (eval-expression (car exps) env)]
+      [else #f]
+      ))
+  )
 
 (define get-value
   (lambda(id reg)
