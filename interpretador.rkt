@@ -27,6 +27,8 @@
 ;;                      <begin-exp (exp exps)>
 ;;                  ::= set <identificador> = <expression> Inspirado por Racket.
 ;;                      <set-exp (id rhs)>
+;;                  ::=  tupla[{<expresion>} ∗(;)]
+;;                       <tupla-exp (value values)>
 ;;                  :: <registro> ::= "{" {<identificador>=<expresion>}+(;) "}"
 ;;                      <registro (ids exps)>
 ;;                  ::= for <identificador> = <expresion>
@@ -106,6 +108,7 @@
     (expression ("vacio?" "(" expression ")") tupla-vacia?)
     (expression ("cabeza" "(" expression ")") cabeza-tupla-exp)
     (expression ("cola" "(" expression ")") cola-tupla-exp)
+    (expression ("ref-tuple" "(" number "," expression ")") ref-tupla-exp)
     (expression ("crear-registro" "(" "{"(separated-list identifier "=" expression ";")"}" ")") crear-registro)
     (expression ("registros?" "(" expression ")") registros?)
     (expression("ref-registro" "(" identifier "," expression ")") ref-registro)
@@ -294,6 +297,10 @@
       (vacia-tupla-exp () (tupla-vacia))
       (cabeza-tupla-exp(exp) (get-cabeza-tupla 0 (eval-expression exp env) env))
       (cola-tupla-exp(exp) (get-cola-tupla (eval-expression exp env) env))
+      (ref-tupla-exp(index exp) (if (>= index 0)
+                                    (get-cabeza-tupla index (eval-expression exp env) env)
+                                    (eopl:error "El indice ingresado debe ser mayor o igual que cero")
+                                    ))
       (tupla-vacia?(exp) (empty-tupla? (eval-expression exp env)))
       (crear-registro(ids exps) (un-registro ids (eval-rands exps env)))
       (registros?(exp) (registro? (eval-expression exp env)))
@@ -520,7 +527,7 @@
     (cond
       [(eqv? index '()) #t]
       [(eqv? index 0) (eval-expression (car exps) env)]
-      [else #f]
+      [else (search-value-tupla (- index 1) (cdr exps) env)]
       ))
   )
 
