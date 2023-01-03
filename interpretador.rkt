@@ -122,6 +122,7 @@
      ("while" expression  "do" expression "done") while-exp)
     (expression
      ("for" identifier "=" expression "to" expression "do" expression "done") for-exp)
+    (expression ("print" "(" expression ")") print-exp)
 
 
     ;;expr-bool
@@ -334,6 +335,7 @@
                  (when (< id (eval-expression final-value env))
                    (eval-expression body env) 
                     (loop (+ id 1))))) )
+      (print-exp (value) (print (eval-expression value env)))
       
       ;;aplicar primitivas unaria y binaria
       (primapp-bin-exp (rand1 prim-bin rand2)
@@ -357,12 +359,16 @@
                                  "Attempt to apply non-procedure ~s" proc))))
       )))
 
+(define print
+  (lambda(value)
+    (display value)
+    '-))
 
- (define cabeza-tupla
-   (lambda (tp1)
-     (cases tupla tp1
-       (una-tupla (tp1) #t)
-       (else #f))))
+(define cabeza-tupla
+  (lambda (tp1)
+    (cases tupla tp1
+      (una-tupla (tp1) #t)
+      (else #f))))
 (define aux-crear-tupla
   (lambda (valor lista)
     (una-tupla (append (list valor) lista))))
