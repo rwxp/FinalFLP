@@ -122,7 +122,6 @@
      ("while" expression  "do" expression "done") while-exp)
     (expression
      ("for" identifier "=" expression "to" expression "do" expression "done") for-exp)
-    (expression ("print" "(" expression ")") print-exp)
 
 
     ;;expr-bool
@@ -238,7 +237,6 @@
 (define init-env
   (lambda ()
     (extend-env
-     'var
      '(x y z)
      (list (direct-target 1)
            (direct-target 5)
@@ -272,26 +270,21 @@
 
       ;;definiciones
       (decVar-exp (ids rands body)
-              (let ((args (eval-rands rands env))
-                    (idss (get-decl-in-env ids env)))
-                (if (null? idss)
-                    (eval-expression body (extend-env 'var ids args env))
-                    (if (element-in-list? (equal-type-decl idss env) #f)
-                        (eopl:error 'decVar-exp "It's not possible to modify a const")   
-                        (eval-expression body (extend-env 'var ids args env))))
-                ))
+              (let ((args (eval-var-rands rands env)))
+                 (eval-expression body
+                                  (extend-env ids args env))))
       
       (const-exp (ids rands body)
-                  (let ((args (eval-rands rands env))
+                  (let ((args (eval-var-rands rands env))
                        (idss (map-const-ids ids env)))
                    (if (element-in-list? idss #t)
                         (eopl:error 'const-exp "one or more constanst were already declared before")
-                        (eval-expression body (extend-env 'const ids args env))
+                        (eval-expression body (extend-env ids args env))
                         )))
       
       (rec-exp (proc-names idss bodies letrec-body)
                   (eval-expression letrec-body
-                                   (extend-env-recursively 'var proc-names idss bodies env)))
+                                   (extend-env-recursively proc-names idss bodies env)))
 
       ;;datos predefinidos
       (lista (values) values)
@@ -306,8 +299,12 @@
       (ref-registro(key registro) (get-value key (eval-expression registro env)))
       (set-registro(key value registro) (set-value key (eval-expression value env) (eval-expression registro env)))
       ;;Secuenciacion:
-      (set-exp (id rhs-exp) (apply-decl-in-set id rhs-exp env))
-      
+      (set-exp (id rhs-exp)
+               (begin
+                 (setref!
+                  (apply-env-ref env id)
+                  (eval-expression rhs-exp env))
+                 1))
       (begin-exp (exp exps)
                  (let loop ((acc (eval-expression exp env))
                             (exps exps))
@@ -337,7 +334,6 @@
                  (when (< id (eval-expression final-value env))
                    (eval-expression body env) 
                     (loop (+ id 1))))) )
-      (print-exp (value) (print (eval-expression value env)))
       
       ;;aplicar primitivas unaria y binaria
       (primapp-bin-exp (rand1 prim-bin rand2)
@@ -361,16 +357,12 @@
                                  "Attempt to apply non-procedure ~s" proc))))
       )))
 
-(define print
-  (lambda(value)
-    (display value)
-    '-))
 
-(define cabeza-tupla
-  (lambda (tp1)
-    (cases tupla tp1
-      (una-tupla (tp1) #t)
-      (else #f))))
+ (define cabeza-tupla
+   (lambda (tp1)
+     (cases tupla tp1
+       (una-tupla (tp1) #t)
+       (else #f))))
 (define aux-crear-tupla
   (lambda (valor lista)
     (una-tupla (append (list valor) lista))))
@@ -409,9 +401,6 @@
   (lambda (elem env)
     (map (lambda (x) (element-in-env? x env)) elem)))
 
-(define equal-type-decl
-  (lambda (elem env)
-    (map (lambda (x) (equal? (type-decl x env) 'var)) elem)))
 
 ; eval-rands: funciones auxiliares para aplicar eval-rand a cada elemento de una 
 ; lista de operandos (expresiones)
@@ -456,24 +445,6 @@
 (define eval-var-rands
   (lambda (rands env)
     (map (lambda (x) (eval-var-rand x env)) rands)))
-
-(define apply-set-exp
-  (lambda (id rhs-exp env)
-    (begin
-      (setref!
-       (apply-env-ref env id)
-       (eval-expression rhs-exp env))
-      1)))
-
-(define apply-decl-in-set
-  (lambda (id rhs-exp env)
-    (if (element-in-env? id env)
-        (let ((type (type-decl id env)))
-          (if (equal? type 'var)
-              (apply-set-exp id rhs-exp env)
-              (eopl:error 'set-exp "It's not possible to modify a const")))
-        (eopl:error 'set-exp "No binding for ~s" id))))
-
 
 
 ;apply-primitiva-binaria: <primitiva> <expression> <expression> -> numero | text
@@ -818,7 +789,7 @@
   (lambda (proc args)
     (cases procval proc
       (cerradura (ids body env)
-               (eval-expression body (extend-env 'var ids args env))))))
+               (eval-expression body (extend-env ids args env))))))
 
 ;*******************************************************************************************
 ;Ambientes
@@ -837,7 +808,6 @@
 (define-datatype environment environment?
   (empty-env-record)
   (extended-env-record
-   (decl symbol?)
    (syms (list-of symbol?))
    (vec vector?)
    (env environment?)))
@@ -851,16 +821,16 @@
 ;extend-env: <list-of symbols> <list-of numbers> enviroment -> enviroment
 ;función que crea un ambiente extendido
 (define extend-env
-  (lambda (type-decl syms vals env)
-    (extended-env-record type-decl syms (list->vector vals) env)))
+  (lambda (syms vals env)
+    (extended-env-record syms (list->vector vals) env)))
 
 ;extend-env-recursively: <list-of symbols> <list-of <list-of symbols>> <list-of expressions> environment -> environment
 ;función que crea un ambiente extendido para procedimientos recursivos
 (define extend-env-recursively
-  (lambda (type-decl proc-names idss bodies old-env)
+  (lambda (proc-names idss bodies old-env)
     (let ((len (length proc-names)))
       (let ((vec (make-vector len)))
-        (let ((env (extended-env-record type-decl proc-names vec old-env)))
+        (let ((env (extended-env-record proc-names vec old-env)))
           (for-each
             (lambda (pos ids body)
               (vector-set! vec pos (direct-target (cerradura ids body env))))
@@ -904,34 +874,19 @@
     (cases environment env
       (empty-env-record ()
                         (eopl:error 'apply-env-ref "No binding for ~s" sym))
-      (extended-env-record (decl syms vals env)
+      (extended-env-record (syms vals env)
                            (let ((pos (rib-find-position sym syms)))
                              (if (number? pos)
                                  (a-ref pos vals)
                                  (apply-env-ref env sym)))))))
 
 
-;type-decl:función que retorna el tipo de la declaración.
-;<symbol> <environment> -> <symbol>
-(define type-decl
-  (lambda (decln env)    
-    (cases environment env
-      (empty-env-record ()
-                        (eopl:error 'type-decl "No binding for ~s" decln))
-      (extended-env-record (decl syms vals env)
-                           (if (element-in-list? syms decln)
-                               decl
-                               (type-decl decln env)))
-     )))
-
-;element-in-env?: función que verifica si un elemento se encuentra en un ambiente
-;<symbol> <environment> -> <boolean>
 (define element-in-env?
   (lambda (elem env)
     (cases environment env
       (empty-env-record ()
                         #f)
-      (extended-env-record (decl syms vals env)
+      (extended-env-record (syms vals env)
                            (let ((ids syms))
                                (if (element-in-list? ids elem)
                                    #t
@@ -1018,14 +973,6 @@
       ((equal? (car lst) elem) #t)
       (else (element-in-list? (cdr lst) elem)))
        ))
-
-(define get-decl-in-env
-  (lambda (lst env)
-    (cond
-    ((null? lst) '())
-    ((element-in-env? (car lst) env) (cons (car lst) (get-decl-in-env (cdr lst) env)))
-    (else (get-decl-in-env (cdr lst) env)))
-    ))
 
 (show-the-datatypes)
 just-scan
