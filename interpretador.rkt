@@ -429,15 +429,16 @@
   (lambda (rand env)
     (cases expression rand
       (identificador (id)
-                     (let ((value (eval-expression rand))) value))
+                     (indirect-target
+                      (let ((ref (apply-env-ref env id)))
+                        (cases target (primitive-deref ref)
+                          (direct-target (expval) ref)
+                          (indirect-target (ref1) ref1))))
+                     )
+
       (else
        (direct-target (eval-expression rand env))))))
 
-;(indirect-target
-;                (let ((ref (apply-env-ref env id)))
-;                  (cases target (primitive-deref ref)
-;                    (direct-target (expval) ref)
-;                    (indirect-target (ref1) ref1))))
 
 ;eval-regular-rands: Funcion cuya finalidad es evaluar ids sin realizar la creacion de targets.
 (define eval-regular-rands
