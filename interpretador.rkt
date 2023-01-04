@@ -302,7 +302,7 @@
                                     (eopl:error "El indice ingresado debe ser mayor o igual que cero")
                                     ))
       (tupla-vacia?(exp) (empty-tupla? (eval-expression exp env)))
-      (crear-registro(ids exps) (un-registro ids (eval-rands exps env)))
+      (crear-registro(ids exps) (un-registro ids (eval-regular-rands exps env)))
       (registros?(exp) (registro? (eval-expression exp env)))
       (ref-registro(key registro) (get-value key (eval-expression registro env)))
       (set-registro(key value registro) (set-value key (eval-expression value env) (eval-expression registro env)))
@@ -429,13 +429,16 @@
   (lambda (rand env)
     (cases expression rand
       (identificador (id)
-               (indirect-target
-                (let ((ref (apply-env-ref env id)))
-                  (cases target (primitive-deref ref)
-                    (direct-target (expval) ref)
-                    (indirect-target (ref1) ref1)))))
+                     (let ((value (eval-expression rand))) value))
       (else
        (direct-target (eval-expression rand env))))))
+
+;(indirect-target
+;                (let ((ref (apply-env-ref env id)))
+;                  (cases target (primitive-deref ref)
+;                    (direct-target (expval) ref)
+;                    (indirect-target (ref1) ref1))))
+
 ;eval-regular-rands: Funcion cuya finalidad es evaluar ids sin realizar la creacion de targets.
 (define eval-regular-rands
   (lambda(rands env)
@@ -992,6 +995,8 @@ just-scan
 scan&parse
 
 ;;Ejemplos de scan&parse
+;;Ejemplo paso por referencia:
+(scan&parse "var w = 100 in var p = procedure(l) do begin set l = add1(l); l end end in (eval p(w);+ eval p(w);)")
 ;numero
 (scan&parse "3")
 ;identificador
