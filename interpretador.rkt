@@ -27,6 +27,8 @@
 ;;                      <begin-exp (exp exps)>
 ;;                  ::= set <identificador> = <expression> Inspirado por Racket.
 ;;                      <set-exp (id rhs)>
+;;                  ::=  tupla[{<expresion>} ∗(;)]
+;;                       <tupla-exp (value values)>
 ;;                  :: <registro> ::= "{" {<identificador>=<expresion>}+(;) "}"
 ;;                      <registro (ids exps)>
 ;;                  ::= for <identificador> = <expresion>
@@ -106,6 +108,7 @@
     (expression ("vacio?" "(" expression ")") tupla-vacia?)
     (expression ("cabeza" "(" expression ")") cabeza-tupla-exp)
     (expression ("cola" "(" expression ")") cola-tupla-exp)
+    (expression ("ref-tuple" "(" number "," expression ")") ref-tupla-exp)
     (expression ("crear-registro" "(" "{"(separated-list identifier "=" expression ";")"}" ")") crear-registro)
     (expression ("registros?" "(" expression ")") registros?)
     (expression("ref-registro" "(" identifier "," expression ")") ref-registro)
@@ -300,8 +303,12 @@
       (vacia-tupla-exp () (tupla-vacia))
       (cabeza-tupla-exp(exp) (get-cabeza-tupla 0 (eval-expression exp env) env))
       (cola-tupla-exp(exp) (get-cola-tupla (eval-expression exp env) env))
+      (ref-tupla-exp(index exp) (if (>= index 0)
+                                    (get-cabeza-tupla index (eval-expression exp env) env)
+                                    (eopl:error "El indice ingresado debe ser mayor o igual que cero")
+                                    ))
       (tupla-vacia?(exp) (empty-tupla? (eval-expression exp env)))
-      (crear-registro(ids exps) (un-registro ids (eval-rands exps env)))
+      (crear-registro(ids exps) (un-registro ids (eval-regular-rands exps env)))
       (registros?(exp) (registro? (eval-expression exp env)))
       (ref-registro(key registro) (get-value key (eval-expression registro env)))
       (set-registro(key value registro) (set-value key (eval-expression value env) (eval-expression registro env)))
@@ -427,13 +434,17 @@
   (lambda (rand env)
     (cases expression rand
       (identificador (id)
-               (indirect-target
-                (let ((ref (apply-env-ref env id)))
-                  (cases target (primitive-deref ref)
-                    (direct-target (expval) ref)
-                    (indirect-target (ref1) ref1)))))
+                     (indirect-target
+                      (let ((ref (apply-env-ref env id)))
+                        (cases target (primitive-deref ref)
+                          (direct-target (expval) ref)
+                          (indirect-target (ref1) ref1))))
+                     )
+
       (else
        (direct-target (eval-expression rand env))))))
+
+
 ;eval-regular-rands: Funcion cuya finalidad es evaluar ids sin realizar la creacion de targets.
 (define eval-regular-rands
   (lambda(rands env)
@@ -543,7 +554,7 @@
     (cond
       [(eqv? index '()) #t]
       [(eqv? index 0) (eval-expression (car exps) env)]
-      [else #f]
+      [else (search-value-tupla (- index 1) (cdr exps) env)]
       ))
   )
 
@@ -1032,6 +1043,8 @@ just-scan
 scan&parse
 
 ;;Ejemplos de scan&parse
+;;Ejemplo paso por referencia:
+(scan&parse "var w = 100 in var p = procedure(l) do begin set l = add1(l); l end end in (eval p(w);+ eval p(w);)")
 ;numero
 (scan&parse "3")
 ;identificador
