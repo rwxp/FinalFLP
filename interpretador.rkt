@@ -435,15 +435,25 @@
   (lambda (rand env)
     (cases expression rand
       (identificador (id)
-                     (indirect-target
-                      (let ((ref (apply-env-ref env id)))
-                        (cases target (primitive-deref ref)
-                          (direct-target (expval) ref)
-                          (indirect-target (ref1) ref1))))
-                     )
-
+                     (let ((ref (apply-env-ref env id)))
+                       (let ((ref-to-value (cases target (primitive-deref ref)
+                                             (direct-target (expval) ref)
+                                             (indirect-target (ref1) ref1))))
+                         (target-redirect (primitive-deref ref-to-value) ref-to-value)
+                         )
+                       ))
       (else
        (direct-target (eval-expression rand env))))))
+
+(define target-redirect
+  (lambda(tar ref)
+    (cases target tar
+      (direct-target(expval)(cond
+                              [(registro? expval) (indirect-target ref)]
+                              [else (direct-target expval) ])
+      )
+      (indirect-target "eopl: It is not expected an indirect-target as value")
+    )))
 
 
 ;eval-regular-rands: Funcion cuya finalidad es evaluar ids sin realizar la creacion de targets.
@@ -1048,8 +1058,13 @@ just-scan
 scan&parse
 
 ;;Ejemplos de scan&parse
-;;Ejemplo paso por referencia:
-(scan&parse "var w = 100 in var p = procedure(l) do begin set l = add1(l); l end end in (eval p(w);+ eval p(w);)")
+;;Ejemplo paso por referencia registros:
+(scan&parse "var w = crear-registro({j=0}) in var p = procedure() do
+begin set w = set-registro(j, (ref-registro(j, w)+10), w); set y = ref-registro(j, w); y end end in begin eval p();; eval p(); end")
+;;Ejemplo paso por valor de cualquier otro dato:
+(scan&parse "var x=100, funct = procedure (a) do
+ begin set a = add1(a); a end end in (eval funct(x); + eval funct(x);)")
+
 ;numero
 (scan&parse "3")
 ;identificador
