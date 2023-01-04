@@ -416,6 +416,7 @@
   (lambda (elem env)
     (map (lambda (x) (element-in-env? x env)) elem)))
 
+;equal-type-decl: función auxiliar que hace un mapeo verificando si la declaración que recibe es de tipo var.
 (define equal-type-decl
   (lambda (elem env)
     (map (lambda (x) (equal? (type-decl x env) 'var)) elem)))
@@ -468,6 +469,7 @@
   (lambda (rands env)
     (map (lambda (x) (eval-var-rand x env)) rands)))
 
+;apply-set-exp: evalua el cuerpo de un set en el ambiente correspondiente
 (define apply-set-exp
   (lambda (id rhs-exp env)
     (begin
@@ -476,6 +478,7 @@
        (eval-expression rhs-exp env))
       1)))
 
+;apply-decl-in-set: aplica el set dependiendo del tipo de declaración definida (const/var)
 (define apply-decl-in-set
   (lambda (id rhs-exp env)
     (if (element-in-env? id env)
@@ -1021,7 +1024,7 @@
                 #f))))))
 
 ;element-in-list?: función auxiliar que determina si un elemento se encuentra en una lista.
-;<list> <scheme-value> -> bool
+;<list> <scheme-value> -> <bool>
 (define element-in-list?
   (lambda (lst elem)
     (cond
@@ -1030,6 +1033,8 @@
       (else (element-in-list? (cdr lst) elem)))
        ))
 
+;get-decl-in-env: función auxiliar que me obtiene enlistado los elementos que se encuentran en un ambiente
+;<list> <environment> -> <list>
 (define get-decl-in-env
   (lambda (lst env)
     (cond
@@ -1076,5 +1081,7 @@ end")
 (scan&parse "begin for i=0 to 10 do set x= 3  done; x end")
 ;decVar-exp
 (scan&parse "var n = 5 in n")
+;const-exp
+(scan&parse "const u = 5 in u")
 ;******************************************************************************************
 ;Parte 2
