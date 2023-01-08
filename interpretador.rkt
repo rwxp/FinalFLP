@@ -1,12 +1,12 @@
 #lang eopl
 ;;Interpretador
-;; URL Github: https://github.com/rwxp/FinalFLP
+;;URL Github: https://github.com/rwxp/FinalFLP
 ;;Sebastián Caicedo Martínez - 1841245
 ;;Laura Moyano Gonzalez - 2023906
 ;;Santiago Trujillo Ramírez - 2071655
 ;;Cristian Camilo Montaño Rentería - 2024223
 ;;Santiago ospitia jimenez - 2025465
-;; Proyecto FLP
+;;Proyecto FLP
 
 
 ;; La definición BNF para las expresiones del lenguaje:
@@ -76,7 +76,7 @@
    ("-" digit (arbno digit)) number)
   (number
    (digit (arbno digit) "." digit (arbno digit)) number)
-    (number
+  (number
    ("-" digit (arbno digit) "." digit (arbno digit)) number)))
 
 ;Especificación Sintáctica (gramática)
@@ -101,14 +101,21 @@
     (expression (text) cadena)
     
     ;;Constructores de Datos Predefinidos
-    (expression ("["(separated-list expression ",")"]") lista)
+    (expression ("crear-lista" "(""["(separated-list expression ",")"]"")") crear-lista)
+    (expression ("lista?" "("  expression ")" ) listas?)
+    (expression ("vacio-lista" "(" ")") vacia-lista-exp)
+    (expression ("vacio-lista?" "(" expression ")") lista-vacia?)
+    (expression ("cabeza-lista" "(" expression ")") cabeza-lista-exp)
+    (expression ("cola-lista" "(" expression ")") cola-lista-exp)
+    
     (expression ("crear-tupla" "(" "tupla" "[" expression (arbno "," expression) "]" ")") tupla-exp)
     (expression ("tupla?" "("  expression ")" ) tuplas?)
-    (expression ("vacio" "(" ")") vacia-tupla-exp)
-    (expression ("vacio?" "(" expression ")") tupla-vacia?)
-    (expression ("cabeza" "(" expression ")") cabeza-tupla-exp)
-    (expression ("cola" "(" expression ")") cola-tupla-exp)
-    (expression ("ref-tuple" "(" number "," expression ")") ref-tupla-exp)
+    (expression ("ref-tuple" "(" number "," expression ")") ref-tupla-exp)    
+    (expression ("vacio-tupla" "(" ")") vacia-tupla-exp)
+    (expression ("vacio-tupla?" "(" expression ")") tupla-vacia?)
+    (expression ("cabeza-tupla" "(" expression ")") cabeza-tupla-exp)
+    (expression ("cola-tupla" "(" expression ")") cola-tupla-exp)
+    
     (expression ("crear-registro" "(" "{"(separated-list identifier "=" expression ";")"}" ")") crear-registro)
     (expression ("registros?" "(" expression ")") registros?)
     (expression("ref-registro" "(" identifier "," expression ")") ref-registro)
@@ -126,8 +133,7 @@
     (expression
      ("for" identifier "=" expression "to" expression "do" expression "done") for-exp)
     (expression ("print" "(" expression ")") print-exp)
-
-
+    
     ;;expr-bool
     (expression ("true") true-val)
     (expression ("false") false-val)    
@@ -145,7 +151,6 @@
     (oper-bin-bool ("and") and-op)
     (oper-bin-bool ("or") or-op)
     (oper-un-bool ("not") not-op)
-
     
     ;;operaciones binarias y unarias 
     (expression
@@ -297,21 +302,29 @@
                                    (extend-env-recursively 'var proc-names idss bodies env)))
 
       ;;datos predefinidos
-      (lista (values) values)
+      (crear-lista (values) (no-empty-list values))
+      (listas?(exp) (lista? (eval-expression exp env)))
+      (vacia-lista-exp () (empty-list))
+      (lista-vacia?(exp) (empty-lista? (eval-expression exp env)))
+      (cabeza-lista-exp (exp) (get-cabeza-lista (eval-expression exp env) env))
+      (cola-lista-exp(exp) (get-cola-lista (eval-expression exp env) env))
+            
       (tupla-exp(value values) (aux-crear-tupla value values))
       (tuplas?(exp) (tupla? (eval-expression exp env)))
-      (vacia-tupla-exp () (tupla-vacia))
-      (cabeza-tupla-exp(exp) (get-cabeza-tupla 0 (eval-expression exp env) env))
-      (cola-tupla-exp(exp) (get-cola-tupla (eval-expression exp env) env))
       (ref-tupla-exp(index exp) (if (>= index 0)
                                     (get-cabeza-tupla index (eval-expression exp env) env)
                                     (eopl:error "El indice ingresado debe ser mayor o igual que cero")
-                                    ))
+                                    )) 
+      (vacia-tupla-exp () (tupla-vacia))
+      (cabeza-tupla-exp(exp) (get-cabeza-tupla 0 (eval-expression exp env) env))
+      (cola-tupla-exp(exp) (get-cola-tupla (eval-expression exp env) env))
       (tupla-vacia?(exp) (empty-tupla? (eval-expression exp env)))
+      
       (crear-registro(ids exps) (un-registro ids (eval-regular-rands exps env)))
       (registros?(exp) (registro? (eval-expression exp env)))
       (ref-registro(key registro) (get-value key (eval-expression registro env)))
       (set-registro(key value registro) (set-value key (eval-expression value env) (eval-expression registro env)))
+      
       ;;Secuenciacion:
       (set-exp (id rhs-exp) (apply-decl-in-set id rhs-exp env))
       
@@ -378,9 +391,11 @@
     (cases tupla tp1
       (una-tupla (tp1) #t)
       (else #f))))
+
 (define aux-crear-tupla
   (lambda (valor lista)
     (una-tupla (append (list valor) lista))))
+
 (define eval-pred
   (lambda(pred)
     (cases pred-prim pred
@@ -409,6 +424,8 @@
   )
 
 (define empty-tupla? (lambda(tpl) (cases tupla tpl (tupla-vacia () #t) (else #f) )))
+
+(define empty-lista? (lambda(lst) (cases lista lst (empty-list () #t) (else #f) )))
 
 ;map-const-ids: función auxiliar que hace un mapeo de una lista de elementos verificando si se encuentra uno en un ambiente.
 ;<listae> <environment> -> <lista>
@@ -526,10 +543,37 @@
       ;;aritmetica cadena
       (primitiva-concat() (string-append arg1 arg2))
       )))
-;-----------------------Estructuras de datos (registro) y funciones-------------
-(define-datatype registro registro?
-  (vacio)
-  (un-registro (ids (list-of symbol?)) (exps (list-of expval?))))
+;-----------------------Estructuras de datos (listas)(registro)(tuplas) y funciones-------------
+(define-datatype lista lista?
+  (empty-list)
+  (no-empty-list (lst (list-of expression?))))
+
+(define get-cabeza-lista
+  (lambda(lst env)
+    (cases lista lst
+      (empty-list() (eopl:error "Está intentando obtener un elemento de una lista vacío"))
+      (no-empty-list(first ) (search-car-lista first env))
+      )
+    )
+  )
+(define search-car-lista
+  (lambda(lst env)
+    (cond
+      [(null? (car lst)) (eopl:error "Está intentando obtener un elemento de una lista vacío")]
+      ;[(eqv? index 0) (eval-expression (car exps) env)]
+      [else (eval-expression (car lst) env)]
+      ))
+  )
+(define get-cola-lista
+  (lambda(lst env)
+    (cases lista lst
+      (empty-list() (eopl:error "Está intentando obtener un elemento de una tupla vacío"))
+      (no-empty-list( rest ) (search-cola-tupla rest env))
+      )
+    )
+  )
+
+
 
 (define-datatype tupla tupla?
   (tupla-vacia)
@@ -570,6 +614,10 @@
       [else (search-value-tupla (- index 1) (cdr exps) env)]
       ))
   )
+
+(define-datatype registro registro?
+  (vacio)
+  (un-registro (ids (list-of symbol?)) (exps (list-of expval?))))
 
 (define get-value
   (lambda(id reg)
