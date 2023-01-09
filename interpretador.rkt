@@ -431,6 +431,52 @@
       
       )))
 
+; Declaraciones POO
+(define class-decl->class-name
+  (lambda (c-decl)
+    (cases class-decl c-decl
+      (a-class-decl (class-name super-name field-ids m-decls)
+        class-name))))
+
+(define class-decl->super-name
+  (lambda (c-decl)
+    (cases class-decl c-decl
+      (a-class-decl (class-name super-name field-ids m-decls)
+        super-name))))
+
+(define class-decl->field-ids
+  (lambda (c-decl)
+    (cases class-decl c-decl
+      (a-class-decl (class-name super-name field-ids m-decls)
+        field-ids))))
+
+(define class-decl->method-decls
+  (lambda (c-decl)
+    (cases class-decl c-decl
+      (a-class-decl (class-name super-name field-ids m-decls)
+        m-decls))))
+
+(define method-decl->method-name
+  (lambda (md)
+    (cases method-decl md
+      (a-method-decl (method-name ids body) method-name))))
+
+(define method-decl->ids
+  (lambda (md)
+    (cases method-decl md
+      (a-method-decl (method-name ids body) ids))))
+
+(define method-decl->body
+  (lambda (md)
+    (cases method-decl md
+      (a-method-decl (method-name ids body) body))))
+
+(define method-decls->method-names
+  (lambda (mds)
+    (map method-decl->method-name mds)))
+; Fin declaraciones POO
+
+
 (define print
   (lambda(value)
     (display value)
@@ -1060,12 +1106,65 @@
                                    (element-in-env? elem env)
                                 )))
                         )))
+
+;^; new for ch 5
+(define extend-env-refs
+  (lambda (syms vec env)
+    (extended-env-record 'var syms vec env)))
+
+;^; waiting for 5-4-2.  Brute force code.
+(define list-find-last-position
+  (lambda (sym los)
+    (let loop
+      ((los los) (curpos 0) (lastpos #f))
+      (cond
+        ((null? los) lastpos)
+        ((eqv? sym (car los))
+         (loop (cdr los) (+ curpos 1) curpos))
+        (else (loop (cdr los) (+ curpos 1) lastpos))))))
+
+;--------------- Clases ----------------;
+(define-datatype class class?
+  (a-class
+    (class-name symbol?)  
+    (super-name symbol?) 
+    (field-length integer?)  
+    (field-ids (list-of symbol?))
+    (methods method-environment?)))
+
+;------------- Constucción de clases -----------------;
+(define elaborate-class-decls!
+  (lambda (c-decls)
+    (initialize-class-env!)
+    (for-each elaborate-class-decl! c-decls)))
+
+(define elaborate-class-decl!
+  (lambda (c-decl)
+    (let ((super-name (class-decl->super-name c-decl)))
+      (let ((field-ids  (append
+                          (class-name->field-ids super-name)
+                          (class-decl->field-ids c-decl))))
+        (add-to-class-env!
+          (a-class
+            (class-decl->class-name c-decl)
+            super-name
+            (length field-ids)
+            field-ids
+            (roll-up-method-decls
+              c-decl super-name field-ids)))))))
+
+(define roll-up-method-decls
+  (lambda (c-decl super-name field-ids)
+    (map
+      (lambda (m-decl)
+        (a-method m-decl super-name field-ids))
+      (class-decl->method-decls c-decl))))
 ;*******************************************************************************************
 ;Blancos y Referencias
 
 (define expval?
   (lambda (x)
-    (or (number? x) (procval? x) (tupla? x) (registro? x) (boolean? x) (string? x))))
+    (or (number? x) (procval? x) (tupla? x) (registro? x) (boolean? x) (string? x) (class? x) (object? x) (method? x))))
 
 (define ref-to-direct-target?
   (lambda (x)
