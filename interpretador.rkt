@@ -101,14 +101,14 @@
     (expression (text) cadena)
     
     ;;Constructores de Datos Predefinidos
-    (expression ("crear-lista" "(""["(separated-list expression ",")"]"")") crear-lista)
+    (expression ("crear-lista" "(""["(separated-list expression ";")"]"")") crear-lista)
     (expression ("lista?" "("  expression ")" ) listas?)
     (expression ("vacio-lista" "(" ")") vacia-lista-exp)
     (expression ("vacio-lista?" "(" expression ")") lista-vacia?)
     (expression ("cabeza-lista" "(" expression ")") cabeza-lista-exp)
     (expression ("cola-lista" "(" expression ")") cola-lista-exp)
     
-    (expression ("crear-tupla" "(" "tupla" "[" expression (arbno "," expression) "]" ")") tupla-exp)
+    (expression ("crear-tupla" "(" "tupla" "[" expression (arbno ";" expression) "]" ")") tupla-exp)
     (expression ("tupla?" "("  expression ")" ) tuplas?)
     (expression ("ref-tuple" "(" number "," expression ")") ref-tupla-exp)    
     (expression ("vacio-tupla" "(" ")") vacia-tupla-exp)
@@ -1015,7 +1015,7 @@
 
 (define expval?
   (lambda (x)
-    (or (number? x) (procval? x) (tupla? x) (registro? x) (boolean? x) (string? x))))
+    (or (number? x) (procval? x) (tupla? x) (registro? x) (boolean? x) (string? x) (lista? x))))
 
 (define ref-to-direct-target?
   (lambda (x)
@@ -1123,6 +1123,16 @@ begin set w = set-registro(j, (ref-registro(j, w)+10), w); set y = ref-registro(
 (scan&parse "set x=3")
 ;condicional-exp
 (scan&parse "if and(true, false) then 1 [else 0] end")
+;lista:
+(scan&parse "begin
+   set x = crear-lista([3;2]);
+   cabeza-lista(x);
+   cola-lista(x);
+   vacio-lista?(x);
+   set y = vacio-lista();
+   lista?(y)
+end")
+;registros:
 (scan&parse "begin
     set x = crear-registro({y=3});
     if registros?(x) then set z = set-registro(y, 5, x)
