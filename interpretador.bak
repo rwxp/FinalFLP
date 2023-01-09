@@ -82,7 +82,7 @@
 ;Especificación Sintáctica (gramática)
 
 (define grammar-simple-interpreter
-  '((program ((arbno class-decl) expression) un-programa)
+  '((program (expression) un-programa)
     
     ;;números hexadecimales
     (expression ("x8" "("(separated-list number ",")")") base8-num-exp)
@@ -196,37 +196,7 @@
 
     ;;sobre cadenas
     (primitiva-unaria ("longitud") primitiva-longitud)
-    (primitiva-binaria ("concat") primitiva-concat)
-
-    ;;Programación Orientada a Objetos
-    (class-decl                         
-      ("class" identifier 
-        "extends" identifier                   
-         (arbno "field" identifier)
-         (arbno method-decl)
-         )
-      a-class-decl)
-
-    (method-decl
-      ("method" identifier 
-        "("  (separated-list identifier ",") ")" ; method ids
-        expression 
-        )
-      a-method-decl)
-
-    (expression 
-      ("new" identifier "(" (separated-list expression ",") ")")
-      new-object-exp)
-
-    (expression
-      ("send" expression identifier
-        "("  (separated-list expression ",") ")")
-      method-app-exp)
-
-    (expression                                
-      ("super" identifier    "("  (separated-list expression ",") ")")
-      super-call-exp)
-    
+    (primitiva-binaria ("concat") primitiva-concat)	
     ))
 
 
@@ -268,9 +238,8 @@
 (define eval-program
   (lambda (pgm)
     (cases program pgm
-      (un-programa (c-decls body)
-                   (elaborate-class-decls! c-decls)
-                   (eval-expression body (init-env))))))
+      (un-programa (body)
+                 (eval-expression body (init-env))))))
 ;init-env: ()--> <extend-env>
 ; función que retorna un ambiente inicial en forma de sintaxis abstracta.
 ; Ambiente inicial
@@ -1075,12 +1044,11 @@
 
 (define setref!
   (lambda (ref expval)
-    (if(target? ref)
     (let
         ((ref (cases target (primitive-deref ref)
                 (direct-target (expval1) ref)
                 (indirect-target (ref1) ref1))))
-      (primitive-setref! ref (direct-target expval))) (primitive-setref! ref (direct-target expval)))))
+      (primitive-setref! ref (direct-target expval)))))
 
 (define primitive-setref!
   (lambda (ref val)
@@ -1178,7 +1146,5 @@ end")
 (scan&parse "var n = 5 in n")
 ;const-exp
 (scan&parse "const u = 5 in u")
-;objetos
-(scan&parse "class c1 extends object  field x field y  method initialize()  begin set x = 1; set y = 2 end method m1() x method m2() y  class c2 extends c1  field x field y  method initialize()  begin set x = 2; set y = 3 end method m1() x  var o1 = new c1(), o2 = new c2() in send o2 m2()")
 ;******************************************************************************************
 ;Parte 2
