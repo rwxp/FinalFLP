@@ -410,6 +410,25 @@
                      (apply-procedure proc args)
                      (eopl:error 'eval-expression
                                  "Attempt to apply non-procedure ~s" proc))))
+
+      ;;Programación Orientada a Objetos
+      (new-object-exp (class-name rands)
+        (let ((args (eval-rands rands env))
+              (obj (new-object class-name)))
+          (find-method-and-apply
+            'initialize class-name obj args)
+          obj))
+      (method-app-exp (obj-exp method-name rands)
+        (let ((args (eval-rands rands env))
+              (obj (eval-expression obj-exp env)))
+          (find-method-and-apply
+            method-name (object->class-name obj) obj args)))
+      (super-call-exp (method-name rands)
+        (let ((args (eval-rands rands env))
+              (obj (apply-env env 'self)))
+          (find-method-and-apply
+            method-name (apply-env env '%super) obj args)))
+      
       )))
 
 (define print
