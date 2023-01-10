@@ -29,8 +29,6 @@
 ;;                      <set-exp (id rhs)>
 ;;                  ::=  tupla[{<expresion>} ∗(;)]
 ;;                       <tupla-exp (value values)>
-;;                  ::=  [{<expresion>} ∗(;)]
-;;                       <lista-exp (values)>
 ;;                  :: <registro> ::= "{" {<identificador>=<expresion>}+(;) "}"
 ;;                      <registro (ids exps)>
 ;;                  ::= for <identificador> = <expresion>
