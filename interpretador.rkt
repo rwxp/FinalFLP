@@ -707,7 +707,7 @@
   (lambda(list1 list2 env )
     (cases lista list1 
       (empty-list() list2)
-      (no-empty-list(exps) (append exps list2 ) )
+      (no-empty-list(exps) (append exps  list2) )
       )
     ))
 
@@ -1519,6 +1519,14 @@ begin set w = set-registro(j, (ref-registro(j, w)+10), w); set y = ref-registro(
    vacio-lista?(x);
    set y = vacio-lista();
    lista?(y)
+end")
+;lista ref and set
+(scan&parse "begin
+    set x = crear-lista([1;2;3;4]);
+    if lista?(x) then set z = set-lista(0, 5, x)
+       [else 0] end;  
+    set y = ref-lista(1,  crear-lista([6;7;8;9]));
+    y
 end")
 ;registros:
 (scan&parse "begin
