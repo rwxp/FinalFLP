@@ -432,15 +432,15 @@
                                    (extend-env-recursively 'var proc-names idss bodies env)))
 
       ;;datos predefinidos
-      (crear-lista (values) (no-empty-list values))
+      (crear-lista (values) (no-empty-list (eval-regular-rands values env)))
       (listas?(exp) (lista? (eval-expression exp env)))
       (vacia-lista-exp () (empty-list))
       (lista-vacia?(exp) (empty-lista? (eval-expression exp env)))
-      (cabeza-lista-exp (exp) (get-cabeza-lista (eval-expression exp env) env))
-      (cola-lista-exp(exp) (get-cola-lista (eval-expression exp env) env))
+      (cabeza-lista-exp (lst) (get-cabeza-lista (eval-expression lst env) env))
+      (cola-lista-exp(lst) (get-cola-lista (eval-expression lst env)))
       (ref-lista(key lista) (get-value-lista key (eval-expression lista env) env))
-      (set-lista(key value lst) (set-value-lista key value (eval-expression lst env)))
-      (append-lista(lst1 lst2) (append-list  (eval-expression lst1 env)  (eval-expression lst2 env) env))
+      (set-lista(key value lst) (set-value-lista key (eval-expression value env) (eval-expression lst env)))
+      (append-lista(lst1 lst2) (append (eval-list (eval-expression lst1 env) ) (eval-list (eval-expression lst2 env)))) 
             
       (tupla-exp(value values) (aux-crear-tupla value values))
       (tuplas?(exp) (tupla? (eval-expression exp env)))
@@ -666,6 +666,7 @@
     (cases target tar
       (direct-target(expval)(cond
                               [(registro? expval) (indirect-target ref)]
+                              [(lista? expval) (indirect-target ref)]
                               [else (direct-target expval) ])
       )
       (indirect-target "eopl: It is not expected an indirect-target as value")
@@ -745,38 +746,39 @@
 ;-----------------------Estructuras de datos (listas)(registro)(tuplas) y funciones-------------
 (define-datatype lista lista?
   (empty-list)
-  (no-empty-list (lst (list-of expression?))))
+  (no-empty-list (lst (list-of expval?))))
 
 (define get-cabeza-lista
   (lambda(lst env)
     (cases lista lst
       (empty-list() (eopl:error "Está intentando obtener un elemento de una lista vacío"))
-      (no-empty-list(first ) (search-car-lista first env))
+      (no-empty-list(first ) (car first ))
       )
     )
   )
-(define search-car-lista
-  (lambda(lst env)
-    (cond
-      [(null? (car lst)) (eopl:error "Está intentando obtener un elemento de una lista vacío")]
-      ;[(eqv? index 0) (eval-expression (car exps) env)]
-      [else (eval-expression (car lst) env)]
-      ))
-  )
+
 (define get-cola-lista
-  (lambda(lst env)
+  (lambda(lst)
     (cases lista lst
       (empty-list() (eopl:error "Está intentando obtener un elemento de una lista vacío"))
-      (no-empty-list( rest ) (search-cola-tupla rest env))
+      (no-empty-list(lst) (tail-lista lst))
       )
     )
   )
+(define tail-lista
+  (lambda(lst)
+    (cond
+      [(eqv? lst '()) (eopl:error "Está intentando obtener la cola de una lista vacía")]
+      [(eqv? (cdr lst) '()) (car lst)]
+      [else (tail-lista (cdr lst))]
+      )
+    ))
 
 (define get-value-lista
   (lambda(index lst env)
     (cases lista lst
       (empty-list() (eopl:error "Está intentando obtener un elemento de una lista vacío"))
-      (no-empty-list(exps) (search-value-lista index (eval-regular-rands exps env) ))
+      (no-empty-list(exps) (search-value-lista index  exps ) )
       )
     )
   )
@@ -798,13 +800,19 @@
       )
     )
   )
-(define append-list
-  (lambda(list1 list2 env )
-    (cases lista list1 
-      (empty-list() list2)
-      (no-empty-list(exps) (append exps  list2) )
-      )
+(define eval-list
+  (lambda(lst )
+    (cases lista lst
+      (empty-list()'())
+      (no-empty-list(exps) exps)      
+      )  
     ))
+(define concatena (lambda (X Y)
+                    (if (null? X)
+                        Y
+                        (cons (car X) (concatena (cdr X) Y))
+                    )
+                    ))
 
 
 (define-datatype tupla tupla?
@@ -1585,7 +1593,9 @@ scan&parse
 ;;Ejemplos de scan&parse
 ;;Ejemplo paso por referencia registros:
 (scan&parse "var w = crear-registro({j=0}) in var p = procedure() do
-begin set w = set-registro(j, (ref-registro(j, w)+10), w); set y = ref-registro(j, w); y end end in begin eval p();; eval p(); end")
+begin set w = set-registro(j, (ref-registro(j, w)+10), w);
+set y = ref-registro(j, w); y end end in begin eval p();; eval p(); end")
+
 ;;Ejemplo paso por valor de cualquier otro dato:
 (scan&parse "var x=100, funct = procedure (a) do
  begin set a = add1(a); a end end in (eval funct(x); + eval funct(x);)")
@@ -1617,6 +1627,12 @@ begin set w = set-registro(j, (ref-registro(j, w)+10), w); set y = ref-registro(
    set y = vacio-lista();
    lista?(y)
 end")
+;paso por referencia lista
+(scan&parse "var w = crear-lista([1;2;3;4]) in var p = procedure() do
+begin set w = set-lista(0, (ref-lista(0, w)+10), w);
+set y = ref-lista(0, w); y end end in begin eval p();; eval p(); end")
+
+(scan&parse " append (crear-lista([1;2;3;4]),crear-lista([1;2;3;4]))")
 ;lista ref and set
 (scan&parse "begin
     set x = crear-lista([1;2;3;4]);
@@ -1625,6 +1641,7 @@ end")
     set y = ref-lista(1,  crear-lista([6;7;8;9]));
     y
 end")
+(scan&parse "append (crear-lista([1;2;3;4]),crear-lista([1;2;3;4]))")
 ;registros:
 (scan&parse "begin
     set x = crear-registro({y=3});
