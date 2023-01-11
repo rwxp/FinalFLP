@@ -109,6 +109,9 @@
     (expression ("vacio-lista?" "(" expression ")") lista-vacia?)
     (expression ("cabeza-lista" "(" expression ")") cabeza-lista-exp)
     (expression ("cola-lista" "(" expression ")") cola-lista-exp)
+    (expression("ref-lista" "(" number "," expression ")") ref-lista)
+    (expression("set-lista" "(" number "," expression "," expression")") set-lista)
+    (expression("append" "(" expression "," expression")") append-lista)
     
     (expression ("crear-tupla" "(" "tupla" "[" expression (arbno ";" expression) "]" ")") tupla-exp)
     (expression ("tupla?" "("  expression ")" ) tuplas?)
@@ -341,6 +344,9 @@
       (lista-vacia?(exp) (empty-lista? (eval-expression exp env)))
       (cabeza-lista-exp (exp) (get-cabeza-lista (eval-expression exp env) env))
       (cola-lista-exp(exp) (get-cola-lista (eval-expression exp env) env))
+      (ref-lista(key lista) (get-value-lista key (eval-expression lista env) env))
+      (set-lista(key value lst) (set-value-lista key value (eval-expression lst env)))
+      (append-lista(lst1 lst2) (append-list  (eval-expression lst1 env)  (eval-expression lst2 env) env))
             
       (tupla-exp(value values) (aux-crear-tupla value values))
       (tuplas?(exp) (tupla? (eval-expression exp env)))
@@ -665,12 +671,45 @@
 (define get-cola-lista
   (lambda(lst env)
     (cases lista lst
-      (empty-list() (eopl:error "Está intentando obtener un elemento de una tupla vacío"))
+      (empty-list() (eopl:error "Está intentando obtener un elemento de una lista vacío"))
       (no-empty-list( rest ) (search-cola-tupla rest env))
       )
     )
   )
 
+(define get-value-lista
+  (lambda(index lst env)
+    (cases lista lst
+      (empty-list() (eopl:error "Está intentando obtener un elemento de una lista vacío"))
+      (no-empty-list(exps) (search-value-lista index (eval-regular-rands exps env) ))
+      )
+    )
+  )
+
+(define search-value-lista
+  (lambda(index exps)
+    (cond
+      [(eqv? exps '()) (eopl:error "Está intentando obtener un elemento de una lista vacío")]
+      [(eqv? index 0)  (car exps)]
+      [else (search-value-lista (- index 1) (cdr exps))]
+      ))
+  )
+
+(define set-value-lista
+  (lambda(index value lst)
+    (cases lista lst
+      (empty-list() (eopl:error "Está intentando obtener un elemento de una lista vacío"))
+      (no-empty-list(exps) (no-empty-list (set-index (list->vector exps ) index value)))
+      )
+    )
+  )
+(define append-list
+  (lambda(list1 list2 env )
+    (cases lista list1 
+      (empty-list() list2)
+      (no-empty-list(exps) (append exps list2 ) )
+      )
+    ))
 
 
 (define-datatype tupla tupla?
@@ -1507,5 +1546,4 @@ end")
 (scan&parse "const u = 5 in u")
 ;objetos
 (scan&parse "class c1 extends object  field x field y  method initialize()  begin set x = 1; set y = 2 end method m1() x method m2() y  class c2 extends c1  field x field y  method initialize()  begin set x = 2; set y = 3 end method m1() x  var o1 = new c1(), o2 = new c2() in send o2 m2()")
-;******************************************************************************************
-;Parte 2
+;*********************************************************************************************
