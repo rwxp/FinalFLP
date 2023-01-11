@@ -1345,7 +1345,9 @@
         (extend-env
          'var
           (cons '%super (cons 'self ids))
-          (cons super-name (cons self args))
+          (if (eqv? super-name '@object)
+              (cons super-name (cons (direct-target self) args))
+              (cons (direct-target super-name) (cons (direct-target self) args)))
           (extend-env-refs field-ids fields (empty-env)))))))
 
 ;;;;;;;;;;;;;;;; method environments ;;;;;;;;;;;;;;;;
@@ -1489,7 +1491,7 @@
 
 (define expval?
   (lambda (x)
-    (or (number? x) (procval? x) (tupla? x) (registro? x) (boolean? x) (string? x) (class? x) (object? x) (method? x) (lista? x))))
+    (or (number? x) (procval? x) (tupla? x) (registro? x) (boolean? x) (string? x) (class? x) (symbol? x) (object? x) (method? x) (lista? x))))
 
 (define ref-to-direct-target?
   (lambda (x)
