@@ -8,124 +8,51 @@
 ;;Santiago ospitia jimenez - 2025465
 ;;Proyecto FLP
 
-;; La definición BNF para las expresiones del lenguaje inspirado en python:
+
+;; La definición BNF para las expresiones del lenguaje:
 ;;
 ;;  <program>       ::= <expression>
 ;;                      un-programa (exp)>
-
 ;;  <expression>    ::= <numero>
 ;;                      <numero (datum)>
-
-;;                  ::= x8 (<numero>*)
-;;                      < base8-num-exp (datum)>
-
-;;                  ::= x16 (<numero>*)
-;;                      < base16-num-exp (datum)>
-
-;;                  ::= x32 (<numero>*)
-;;                      < base32-num-exp (datum)>
-
-;;                  := <text> 
-;;                     <cadena (txt)>
-
 ;;                  ::= <identificador>
 ;;                      <identificador (id)>
-
-;;                  ::= (<expression> <primitiva-binaria> <expression>)
-;;                      <primapp-bin-exp (exp1 prim-binaria exp2)>
-
-;;                  ::= <primitiva-unaria>( <expression>)
-;;                      <primapp-un-exp (prim-unaria exp)>
-
-;;                  ::= procedimiento (<identificador>*',') haga <expresion> finProc
-;;                      <procedimiento-ex (ids cuerpo)>
-
-;;                  ::= evaluar <expression> ( { <expression>}*) finEval
-;;                      <app-exp (exp body)>
-
 ;;                  ::= var {<identificador> = <expression>}*(,) in <expression> Inspirado por Javascript
-;;                      <decVar-exp (ids rands body)>
-
+;;                      <decVar-exp (ids rands body)>  
 ;;                  ::= const {<identificador> = <expression>}*(,) in <expression> Inspirado por Javascript
 ;;                      <const-exp (ids exps body)>
-
 ;;                  ::= rec {<identificador> = ({<identificador>}*(,)) = <expression>}* in <expression>
 ;;                      <rec-exp (rators idss exps body)>
-
 ;;                  ::= begin {<expression>}+(;) end   Inspirado por Racket.
 ;;                      <begin-exp (exp exps)>
-
 ;;                  ::= set <identificador> = <expression> Inspirado por Racket.
 ;;                      <set-exp (id rhs)>
-
 ;;                  ::=  tupla[{<expresion>} ∗(;)]
 ;;                       <tupla-exp (value values)>
-
 ;;                  ::=  [{<expresion>} ∗(;)]
 ;;                       <lista-exp (values)>
-
 ;;                  :: <registro> ::= "{" {<identificador>=<expresion>}+(;) "}"
 ;;                      <registro (ids exps)>
-
 ;;                  ::= for <identificador> = <expresion>
 ;;                        to <expresion> do
 ;;                        <expresion > done
-;;                      <for-exp (ids exp exp exp)>
-
-;;                  ::= if <expr-bool > then <expresion >
-;;                      [ else <expression> ] end
-;;                      <condicional-exp (exp exp exp)>
-
-;;                  ::= while <expr−bool> do
-;;                      <expresion> done
-;;                      <while-exp (exp exps)>
-
-;;                 ::= "false"
-;;                     <false-val>
-
-;;                 ::= "true"
-;;                     <true-val>
-
-;;                 ::= <pred-prim> ( <expresion> , <expresion> )
-;;                       <pred-bool (exp1 exp2)>
-
-;;                 ::= <oper-bin-bool> ( <expresion-bool> , <expresion-bool> )
-;;                      <oper-binaria-bool (exp1 exp2)>
-
-;;                 ::= <oper-un-bool> (<expresion-bool> )
-;;                      <oper-unaria-bool (exp)>
-
-;;                 ::= <print (<expression>)>
-;;                 ::= <print-exp (exp)>
-
-;;                 ::= <print-obj (<expression>)>
-;;                 ::= <print-obj-exp (exp)>
-
-;;
-;; <pred-prim>     ::= < (less)}
-;;                 ::= > (great)
-;;                 ::= <= (less-eq)
-;;                 ::= >= (great-eq)
-;;                 ::= == (equal)
-;;                 ::= <> (not-equal)
-;;
-;; <oper-bin-bool>  ::= and (and-op)
-;;                  ::= or (or-op)
-;;
-;; <oper-un-bool>   ::= not (not-op)
-;;
-;;  <primitiva-binaria>  ::= +
-;;                          | -
-;;                          | *
-;;                          | /
-;;                          | concat
-;;                          | octal+ | octal~ | octal*|
-;;                          | hexa+ | hexa~ | hexa*|
-;;                          | 32+ | 32~ | 32*|
-
+;; ENTREGA ANTERIOR:
+;;                  ::= (<expression> <primitiva-binaria> <expression>)
+;;                      <primapp-bin-exp (exp1 prim-binaria exp2)>
+;;                  ::= <expression>
+;;                      <primapp-un-exp (prim-unaria exp) >
+;;                  ::= Si <expression> entonces <expression> sino <expression> finSI
+;;                      <condicional-exp (test-exp true-exp false-exp)>
+;;                  ::= declarar ( {<identifier> = <expression>}*(;) ) { <expression> }
+;;                      <variableLocal-exp (ids rands body)>
+;;                  ::= procedimiento (<identificador>*',') haga <expresion> finProc
+;;                      <procedimiento-ex (ids cuerpo)>
+;;                  ::= evaluar <expression> ( { <expression>}*) finEval
+;;                      <app-exp (exp body)>
+;;                  ::= declaraRec ( {<identifier>( {identifier}^*(,) ) = <expression>}^* ) { <expression> }
+;;                      <declaraRec-exp (proc-names idss bodies letrec-body)>
+;;  <primitiva-binaria>  ::= + | - | * | / | concat
 ;;  <primitiva-unaria>   ::= add1 | sub1 | longitud
-
-
 
 ;******************************************************************************************
 ;Especificación Léxica
