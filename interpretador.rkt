@@ -133,7 +133,7 @@
     (expression
      ("for" identifier "=" expression "to" expression "do" expression "done") for-exp)
     (expression ("print" "(" expression ")") print-exp)
-    
+    (expression ("print-obj" "(" expression ")") print-obj-exp)
     ;;expr-bool
     (expression ("true") true-val)
     (expression ("false") false-val)    
@@ -208,7 +208,7 @@
       a-class-decl)
 
     (method-decl
-      ("method" identifier 
+      ("def" identifier 
         "("  (separated-list identifier ",") ")" ; method ids
         expression 
         )
@@ -292,6 +292,27 @@
 (define-datatype reference reference?
   (a-ref (position integer?)
          (vec vector?)))
+
+;print-target: me obtiene el valor del target
+;<target> -> <expval>
+(define print-target
+  (lambda(tgt)
+    (cases target tgt
+      (direct-target (expval) expval)
+      (indirect-target (ref) ref))))
+
+;eval-target: mapea una lista de targets aplicando print-target
+;<list-of-targets> -> <list>
+(define eval-target
+  (lambda(targets)
+    (map (lambda(x) (print-target x)) targets)))
+
+;print-obj: imprime el valor de los campos del objeto
+;<objeto> -> <list-of-values>
+(define print-obj
+  (lambda(value)
+    (cases object value
+      (an-object (class-name fields) (eval-target (vector->list fields))))))
 
 ; eval-expression: <expression> <enviroment> -> numero
 ; evalua la expresión para cada caso de la gramatica y recibe un ambiente
@@ -428,7 +449,8 @@
               (obj (apply-env env 'self)))
           (find-method-and-apply
             method-name (apply-env env '%super) obj args)))
-      
+
+      (print-obj-exp (value) (print-obj (eval-expression value env)))
       )))
 
 ; Declaraciones POO
@@ -1504,6 +1526,10 @@ end")
 ;const-exp
 (scan&parse "const u = 5 in u")
 ;objetos
-(scan&parse "class c1 extends object  field x field y  method initialize()  begin set x = 1; set y = 2 end method m1() x method m2() y  class c2 extends c1  field x field y  method initialize()  begin set x = 2; set y = 3 end method m1() x  var o1 = new c1(), o2 = new c2() in send o2 m2()")
+(scan&parse "class c1 extends object  field x field y  def initialize()  begin set x = 1; set y = 2 end def m1() x def m2() y  class c2 extends c1  field x field y  def initialize()  begin set x = 2; set y = 3 end def m1() x  var o1 = new c1(), o2 = new c2() in send o2 m2()")
 ;******************************************************************************************
 ;Parte 2
+;creación de objetos
+(scan&parse "class cl extends object field x def initialize() begin set x = 1 end def m1() x var o1 = new cl() in send o1 m1()")
+;invocación de métodos y selección de campos
+(scan&parse "class cl extends object field x def initialize() begin set x = 1 end def m1() x var o1 = new cl() in send o1 m1()")
