@@ -1575,9 +1575,10 @@ end")
 ;const-exp
 (scan&parse "const u = 5 in u")
 ;objetos
-;(scan&parse
-; "class c1 extends object  field x field y  method initialize()  begin set x = 1; set y = 2 end method m1() x method m2() y  class c2 extends c1  field x field y  method initialize()  begin set x = 2; set y = 3 end method m1() x  var o1 = new c1(), o2 = new c2() in send o2 m2()")
+<<<<<<< HEAD
+(scan&parse "class c1 extends object  field x field y  method initialize()  begin set x = 1; set y = 2 end method m1() x method m2() y  class c2 extends c1  field x field y  method initialize()  begin set x = 2; set y = 3 end method m1() x  var o1 = new c1(), o2 = new c2() in send o2 m2()")
 ;*********************************************************************************************
+=======
 (scan&parse "class c1 extends object  field x field y  def initialize()  begin set x = 1; set y = 2 end def m1() x def m2() y  class c2 extends c1  field x field y  def initialize()  begin set x = 2; set y = 3 end def m1() x  var o1 = new c1(), o2 = new c2() in send o2 m2()")
 ;******************************************************************************************
 ;Parte 2
@@ -1585,3 +1586,4 @@ end")
 (scan&parse "class cl extends object field x def initialize() begin set x = 1 end def m1() x var o1 = new cl() in send o1 m1()")
 ;invocación de métodos y selección de campos
 (scan&parse "class cl extends object field x def initialize() begin set x = 1 end def m1() x var o1 = new cl() in send o1 m1()")
+>>>>>>> 04a1ccdebf23059379b47bd7beb246decffea8ea
