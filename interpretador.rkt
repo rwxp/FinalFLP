@@ -10,8 +10,8 @@
 
 ;; La definición BNF para las expresiones del lenguaje inspirado en python:
 ;;
-;;  <program>       ::= <expression>
-;;                      un-programa (exp)>
+;;  <program>       ::= (<class-decl>*) <expression>
+;;                      <un-programa (class-decl exp)>
 
 ;;  <expression>    ::= <numero>
 ;;                      <numero (datum)>
@@ -92,14 +92,30 @@
 ;;                 ::= <oper-bin-bool> ( <expresion-bool> , <expresion-bool> )
 ;;                      <oper-binaria-bool (exp1 exp2)>
 
-;;                 ::= <oper-un-bool> (<expresion-bool> )
+;;                 ::= <oper-un-bool> (<expresion-bool>)
 ;;                      <oper-unaria-bool (exp)>
 
 ;;                 ::= <print (<expression>)>
 ;;                 ::= <print-exp (exp)>
 
+;;                 ::= new <identificador> (<expression>*(,))
+;;                     new-object-exp (class-name rands)
+
+;;                 ::= send <expression> <identificador> (<expression>*(,))
+;;                     method-app-exp (obj-exp method-name rands)
+
+;;                 ::= super <identificador> (<expression>*(,))
+;;                     super-call-exp (method-name rands)
+
 ;;                 ::= <print-obj (<expression>)>
-;;                 ::= <print-obj-exp (exp)>
+;;                     <print-obj-exp (exp)>
+
+;;  <class-decl>   ::= class <identificador> extends <identificador>
+;;                     (field<identificador>)* (<method-decl>)*
+;;                     a-class-decl(class-name super-name fields-ids method-decls)
+
+;;  <method-decl>  ::= def <identificador> (<identificador>*(,)) <expression>
+;;                     a-method-decl (method-name ids body)
 
 ;;
 ;; <pred-prim>     ::= < (less)}
@@ -697,20 +713,6 @@
 (define eval-regular-rand
   (lambda(rand env)
     (eval-expression rand env)))
-
-;eval-var-rand: funcion auxiliar para aplicar eval-expression a un elemento direct-target
-;de una lista de operandos(expresiones)
-;<struc-rand> <environment> -> <numero>
-(define eval-var-rand
-  (lambda (rand env)
-    (direct-target (eval-expression rand env))))
-
-;eval-var-rands: funcion auxiliar para aplicar eval-var-rand a cada elemento de una lista
-;de operandos(expresiones)
-;<lista> <environment> -> <lista>
-(define eval-var-rands
-  (lambda (rands env)
-    (map (lambda (x) (eval-var-rand x env)) rands)))
 
 ;apply-set-exp: evalua el cuerpo de un set en el ambiente correspondiente
 (define apply-set-exp
@@ -1692,16 +1694,19 @@ end")
 (scan&parse "var n = 5 in n")
 ;const-exp
 (scan&parse "const u = 5 in u")
-;objetos
-;(scan&parse
-; "class c1 extends object  field x field y  method initialize()  begin set x = 1; set y = 2 end method m1() x method m2() y  class c2 extends c1  field x field y  method initialize()  begin set x = 2; set y = 3 end method m1() x  var o1 = new c1(), o2 = new c2() in send o2 m2()")
-;*********************************************************************************************
-(scan&parse "class c1 extends object  field x field y  def initialize()  begin set x = 1; set y = 2 end def m1() x def m2() y  class c2 extends c1  field x field y  def initialize()  begin set x = 2; set y = 3 end def m1() x  var o1 = new c1(), o2 = new c2() in send o2 m2()")
 ;******************************************************************************************
-;Parte 2
+;Parte 2 - Programación Orientada a Objetos
 ;creación de objetos
 (scan&parse "class cl extends object field x def initialize() begin set x = 1 end def m1() x var o1 = new cl() in send o1 m1()")
 ;invocación de métodos y selección de campos
 (scan&parse "class cl extends object field x def initialize() begin set x = 1 end def m1() x var o1 = new cl() in send o1 m1()")
 ;Print objetos, incluidos objetos con herencia
 (scan&parse "class c1 extends object  field x field y  def initialize()  begin   set x = 1; set y = 2 end def m1() x def m2() y  class c2 extends c1  field x field y  def initialize()  begin   super initialize(); set  x = 2; set y = 3 end def m1() x class c3 extends c2  field x field y  def initialize()  begin   super initialize(); set  x = 200; set y = 300 end def m1() x  var o1 = new c1(), o2 = new c2(), o3 = new c3() in print-obj(o3)")
+;Super clase
+(scan&parse "class c1 extends object  field x field y  def initialize()  begin   set x = 1; set y = 2 end def m1() x def m2() y  class c2 extends c1  field x field y  def initialize()  begin   super initialize(); set  x = 2; set y = 3 end def m1() x class c3 extends c2  field x field y  def initialize()  begin   super initialize(); set  x = 200; set y = 300 end def m1() x var o1 = new c1(), o2 = new c2(), o3 = new c3() in send o3 m1()")
+;Atualización de campos
+(scan&parse "class c1 extends object  field x field y  def initialize()  begin   set x = 1; set y = 2 end def m1() x def m2() y  class c2 extends c1  field x field y  def initialize()  begin   super initialize(); set  x = 2; set y = 3 end def m1() x class c3 extends c2  field x field y  def initialize()  begin   super initialize(); set  x = 200; set y = 300 end def m1() x def suma(a, b) begin set x=(a+b); x end var o1 = new c1(), o2 = new c2(), o3 = new c3() in send o3 suma(40, 30)")
+;Herencia
+(scan&parse "class c1 extends object  field x field y  def initialize()  begin   set x = 1; set y = 2 end def m1() x def m2() y  class c2 extends c1  field x field y  def initialize()  begin   super initialize(); set  x = 2; set y = 3 end def m1() x  var o1 = new c1(), o2 = new c2() in send o2 m2()")
+;Polimorfismo
+(scan&parse "class c1 extends object  field x field y  def initialize()  begin set x = 1; set y = 2 end def m1() x def m2() y  class c2 extends c1  field x field y  def initialize()  begin set x = 2; set y = 3 end def m1() 5  var o1 = new c1(), o2 = new c2() in send o2 m1()")
