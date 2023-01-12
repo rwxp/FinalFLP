@@ -389,24 +389,8 @@
 ;<objeto> -> <list-of-values>
 (define print-obj
   (lambda(value)
-    (if (eqv? (object->super-name value) 'object)
-        (cases object value
-      (an-object (class-name fields) (eval-target (vector->list fields))))
-        (cases object value
-          (an-object (class-name fields) (aux-print-sup-obj (vector->list fields)))))))
-
-;Funcion que ayuda a retornar solamente los valores que tienen los atributos de un objeto creado.
-; <list> -> <list>
-(define aux-print-sup-obj
-  (lambda (fields)
-    (if (null? fields)
-        '()
-        (if (target? (car fields))
-        (cons (print-target (car fields)) (aux-print-sup-obj (cdr fields)))
-        (aux-print-sup-obj (cdr fields))
-        )
-        )
-    ))
+    (cases object value
+      (an-object (class-name fields) (eval-target (vector->list fields))))))
 
 ; eval-expression: <expression> <enviroment> -> numero
 ; evalua la expresión para cada caso de la gramatica y recibe un ambiente
@@ -1294,7 +1278,7 @@
     (field-ids (list-of symbol?))
     (methods method-environment?)))
 
-;------------- Construcción de clases -----------------;
+;------------- Constucción de clases -----------------;
 (define elaborate-class-decls!
   (lambda (c-decls)
     (initialize-class-env!)
@@ -1453,11 +1437,6 @@
       (an-object (class-decl fields)
         fields))))
 
-(define object->field-length
-  (lambda (object)
-    (class->field-length
-      (object->class-decl object))))
-
 (define object->class-decl
   (lambda (obj)
     (lookup-class (object->class-name obj))))
@@ -1465,11 +1444,6 @@
 (define object->field-ids
   (lambda (object)
     (class->field-ids
-      (object->class-decl object))))
-
-(define object->super-name
-  (lambda (object)
-    (class->super-name
       (object->class-decl object))))
 
 (define class-name->super-name
@@ -1703,5 +1677,3 @@ end")
 (scan&parse "class cl extends object field x def initialize() begin set x = 1 end def m1() x var o1 = new cl() in send o1 m1()")
 ;invocación de métodos y selección de campos
 (scan&parse "class cl extends object field x def initialize() begin set x = 1 end def m1() x var o1 = new cl() in send o1 m1()")
-;Print objetos, incluidos objetos con herencia
-(scan&parse "class c1 extends object  field x field y  def initialize()  begin   set x = 1; set y = 2 end def m1() x def m2() y  class c2 extends c1  field x field y  def initialize()  begin   super initialize(); set  x = 2; set y = 3 end def m1() x class c3 extends c2  field x field y  def initialize()  begin   super initialize(); set  x = 200; set y = 300 end def m1() x  var o1 = new c1(), o2 = new c2(), o3 = new c3() in print-obj(o3)")
