@@ -1726,6 +1726,11 @@ end")
     set y = ref-registro(w,  crear-registro({w=18}));
     y
 end")
+(scan&parse "crear-registro({y=3})")
+(scan&parse "registros?(crear-registro({y=3}))")
+(scan&parse "ref-registro(y, crear-registro({y=3}))")
+(scan&parse "set-registro(y, 7, crear-registro({y=0}))")
+
 ; rec-exp y app-exp
 (scan&parse "rec 
      factorial(n) = 
