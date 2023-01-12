@@ -1577,7 +1577,7 @@
 
 (define expval?
   (lambda (x)
-    (or (number? x) (procval? x) (tupla? x) (registro? x) (boolean? x) (string? x) (class? x) (symbol? x) (object? x) (method? x) (lista? x))))
+    (or (number? x) (procval? x) (tupla? x) (registro? x) (boolean? x) (string? x) (class? x) (symbol? x) (object? x) (method? x) (lista? x) (list x))))
 
 (define ref-to-direct-target?
   (lambda (x)
