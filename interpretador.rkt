@@ -228,6 +228,7 @@
      ("for" identifier "=" expression "to" expression "do" expression "done") for-exp)
     (expression ("print" "(" expression ")") print-exp)
     (expression ("print-obj" "(" expression ")") print-obj-exp)
+    (expression ("print-obj2" "(" expression "." identifier ")") print2-obj-exp)
     ;;expr-bool
     (expression ("true") true-val)
     (expression ("false") false-val)    
@@ -424,6 +425,41 @@
         )
     ))
 
+;print-obj2: imprime el valor de un campo del objeto
+;<object><list><symbol> -> <number>
+(define print-obj2
+  (lambda (obj obj-ids field-ids)
+    (get-value-index (print-obj obj) (print-obj obj) (index-ids-obj obj-ids field-ids))))
+
+;equal-ids-obj?:determina si el simbolo pertenece a la lista
+;<list><symbol> -> <bool>
+(define equal-ids-obj?
+  (lambda (obj-ids field-ids)
+    (if (null? obj-ids) (eopl:error "field not found ~s" field-ids)
+        (if (eqv? (car obj-ids) field-ids)
+            #t
+            (equal-ids-obj? (cdr obj-ids) field-ids)))))
+
+;get-value-index: Obtiene el elemento de la lista según un índice. La segunda lista es igual a la primera lista
+;<list><list> -> <number>
+(define get-value-index
+  (lambda (lst lst2 index)
+    (if (null? lst) '()
+        (if(eqv?(rib-find-position (car lst) lst2) index)
+       (car lst)
+       (get-value-index (cdr lst) lst2 index))
+        )
+    ))
+
+(define index-ids-obj
+  (lambda (obj-ids field-ids)
+    (if (null? obj-ids)
+        '()
+        (if(equal-ids-obj? obj-ids field-ids)
+           (rib-find-position field-ids obj-ids)
+           (index-ids-obj (cdr obj-ids) field-ids)))))
+
+
 ; eval-expression: <expression> <enviroment> -> numero
 ; evalua la expresión para cada caso de la gramatica y recibe un ambiente
 (define eval-expression
@@ -564,7 +600,10 @@
             method-name (apply-env env '%super) obj args)))
 
       (print-obj-exp (value) (print-obj (eval-expression value env)))
+      (print2-obj-exp (object field) (print-obj2 (eval-expression object env) (object->field-ids (eval-expression object env)) field))
+      ;(print2-obj-exp (object field) (eopl:error "a ~s" field))
       )))
+
 
 ; Declaraciones POO
 (define class-decl->class-name
@@ -1614,6 +1653,12 @@
     (else (get-decl-in-env (cdr lst) env)))
     ))
 
+;(define get-id-in-env
+;  (lambda (ids env)
+;    (cond
+;      ((null? ids) '())
+;      ((element-in-env? lst env)))))
+
 (show-the-datatypes)
 just-scan
 scan&parse
@@ -1700,13 +1745,15 @@ end")
 (scan&parse "class cl extends object field x def initialize() begin set x = 1 end def m1() x var o1 = new cl() in send o1 m1()")
 ;invocación de métodos y selección de campos
 (scan&parse "class cl extends object field x def initialize() begin set x = 1 end def m1() x var o1 = new cl() in send o1 m1()")
-;Print objetos, incluidos objetos con herencia
+;Print objetos, incluidos objetos con herencia y superclase
 (scan&parse "class c1 extends object  field x field y  def initialize()  begin   set x = 1; set y = 2 end def m1() x def m2() y  class c2 extends c1  field x field y  def initialize()  begin   super initialize(); set  x = 2; set y = 3 end def m1() x class c3 extends c2  field x field y  def initialize()  begin   super initialize(); set  x = 200; set y = 300 end def m1() x  var o1 = new c1(), o2 = new c2(), o3 = new c3() in print-obj(o3)")
+;Print un campo del objeto
+(scan&parse "class c1 extends object  field x field y  def initialize()  begin   set x = 1; set y = 2 end def m1() x def m2() y  class c2 extends c1  field x field y  def initialize()  begin   super initialize(); set  x = 2; set y = 3 end def m1() x class c3 extends c2  field x field y  def initialize()  begin   super initialize(); set  x = 200; set y = 300 end def m1() x  var o1 = new c1(), o2 = new c2(), o3 = new c3() in print-obj2(o3.y)")
 ;Super clase
 (scan&parse "class c1 extends object  field x field y  def initialize()  begin   set x = 1; set y = 2 end def m1() x def m2() y  class c2 extends c1  field x field y  def initialize()  begin   super initialize(); set  x = 2; set y = 3 end def m1() x class c3 extends c2  field x field y  def initialize()  begin   super initialize(); set  x = 200; set y = 300 end def m1() x var o1 = new c1(), o2 = new c2(), o3 = new c3() in send o3 m1()")
 ;Atualización de campos
 (scan&parse "class c1 extends object  field x field y  def initialize()  begin   set x = 1; set y = 2 end def m1() x def m2() y  class c2 extends c1  field x field y  def initialize()  begin   super initialize(); set  x = 2; set y = 3 end def m1() x class c3 extends c2  field x field y  def initialize()  begin   super initialize(); set  x = 200; set y = 300 end def m1() x def suma(a, b) begin set x=(a+b); x end var o1 = new c1(), o2 = new c2(), o3 = new c3() in send o3 suma(40, 30)")
 ;Herencia
-(scan&parse "class c1 extends object  field x field y  def initialize()  begin   set x = 1; set y = 2 end def m1() x def m2() y  class c2 extends c1  field x field y  def initialize()  begin   super initialize(); set  x = 2; set y = 3 end def m1() x  var o1 = new c1(), o2 = new c2() in send o2 m2()")
+(scan&parse "class c1 extends object  field x field y  def initialize()  begin set x = 1; set y = 2 end def m1() x def m2() y  class c2 extends c1  field x field y  def initialize()  begin set x = 2; set y = 3 end def m1() x  var o1 = new c1(), o2 = new c2() in send o2 m2()")
 ;Polimorfismo
 (scan&parse "class c1 extends object  field x field y  def initialize()  begin set x = 1; set y = 2 end def m1() x def m2() y  class c2 extends c1  field x field y  def initialize()  begin set x = 2; set y = 3 end def m1() 5  var o1 = new c1(), o2 = new c2() in send o2 m1()")
