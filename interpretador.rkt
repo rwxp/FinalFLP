@@ -110,6 +110,9 @@
 ;;                 ::= <print-obj (<expression>)>
 ;;                     <print-obj-exp (exp)>
 
+;;                 ::= <print-obj2 ( <expression> . <identificador> )>
+;;                 ::= <print2-obj-exp (exp id)>
+
 ;;  <class-decl>   ::= class <identificador> extends <identificador>
 ;;                     (field<identificador>)* (<method-decl>)*
 ;;                     a-class-decl(class-name super-name fields-ids method-decls)
